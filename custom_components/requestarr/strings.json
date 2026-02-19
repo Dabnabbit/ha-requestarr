@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TMDB Configuration",
+        "description": "Enter your TMDB API key. Get one free at themoviedb.org.",
+        "data": {
+          "tmdb_api_key": "TMDB API Key"
+        }
+      },
+      "radarr": {
+        "title": "Radarr Configuration",
+        "description": "Optional: Connect Radarr for movie requests.",
+        "data": {
+          "radarr_url": "Radarr URL (e.g. http://192.168.1.100:7878)",
+          "radarr_api_key": "Radarr API Key"
+        }
+      },
+      "sonarr": {
+        "title": "Sonarr Configuration",
+        "description": "Optional: Connect Sonarr for TV show requests.",
+        "data": {
+          "sonarr_url": "Sonarr URL (e.g. http://192.168.1.100:8989)",
+          "sonarr_api_key": "Sonarr API Key"
+        }
+      },
+      "lidarr": {
+        "title": "Lidarr Configuration",
+        "description": "Optional: Connect Lidarr for music requests.",
+        "data": {
+          "lidarr_url": "Lidarr URL (e.g. http://192.168.1.100:8686)",
+          "lidarr_api_key": "Lidarr API Key"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid API key",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Already configured"
+    }
+  }
+}
