@@ -1,0 +1,11 @@
+query:
+  description: "Query the Requestarr service and optionally return results."
+  fields:
+    query:
+      required: true
+      description: "The query string to send."
+      example: "search term"
+      selector:
+        text:
+  response:
+    optional: true

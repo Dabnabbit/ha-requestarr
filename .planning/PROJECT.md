@@ -48,7 +48,8 @@ Users can search for media and submit requests to their arr stack from a single 
 - **Homelab**: QNAP TS-464 running all services via Portainer stacks
 - **Existing stack**: Radarr (7878), Sonarr (8989), Lidarr (8686), all on 192.168.50.250
 - **Current request UI**: Jellyseerr — works but is a separate container with separate auth; lacks Lidarr/music support
-- **HACS template**: Scaffolded from ha-hacs-template with config flow, coordinator, sensors, LitElement card
+- **HACS template**: Re-scaffolded from ha-hacs-template v1.0 via `copier copy` (2026-02-20). Template provides correct HA 2025.7+ patterns, CI, tests, multi-step config flow, WebSocket framework, and service registration. All files need Requestarr-specific customization.
+- **Copier answers**: `.copier-answers.yml` tracks template version (v1.0) and variables; `copier update` pulls future template improvements
 - **Target users**: Household members (family) who use HA app on phones/tablets/TVs
 - **Arr API version**: v3 for all three services (Radarr, Sonarr, Lidarr)
 - **TMDB**: Free API key, well-documented REST API, poster images via image.tmdb.org
@@ -75,4 +76,4 @@ Users can search for media and submit requests to their arr stack from a single 
 | Tabbed card UI (Movies/TV/Music) | Natural organization matching arr service boundaries | — Pending |
 
 ---
-*Last updated: 2026-02-19 after initialization*
+*Last updated: 2026-02-20 after template overlay from ha-hacs-template v1.0*

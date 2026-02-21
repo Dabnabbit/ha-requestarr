@@ -2,135 +2,127 @@
 
 ## Overview
 
-Requestarr delivers an HA-native media request card in 7 phases: fixing scaffold bugs, building the config flow and coordinator foundation, wiring sensors, implementing movie/TV search and request via WebSocket+TMDB, adding music search and Lidarr request, adding library state detection and notifications, and polishing for HACS submission. The build order is driven by hard dependencies: scaffold fixes gate everything, config flow gates the coordinator, coordinator gates sensors and search, search gates request submission.
+Requestarr delivers an HA-native media request card in 5 phases. The ha-hacs-template v1.0 overlay provides the scaffold, CI/CD, test framework, multi-step config flow, WebSocket framework, and service registration — eliminating the original Phase 1 (scaffold fixes) and Phase 7 (HACS distribution). The remaining work is domain-specific: API clients + config flow, sensors + search, movie/TV request flow, music search + Lidarr request, and library state detection + card polish. The build order follows hard dependencies: config flow gates API access, coordinator gates sensors, search gates request submission.
+
+## Template Baseline (Satisfied by ha-hacs-template v1.0)
+
+| Requirement | What the Template Provides |
+|-------------|---------------------------|
+| SCAF-01 | `async_register_static_paths` + `StaticPathConfig` (HA 2025.7+) |
+| SCAF-02 | Valid manifest.json with `iot_class: cloud_polling`, `version`, `dependencies: [frontend, http, websocket_api]` |
+| SCAF-03 | `unique_id` + `_abort_if_unique_id_configured()` pattern |
+| DIST-01 | HACS-compatible file structure (hacs.json, manifest.json) |
+| DIST-02 | Frontend card served via async static path registration |
+| DIST-03 | CI workflows (hassfest + hacs/action) in `.github/workflows/validate.yml` |
 
 ## Phases
 
-- [ ] **Phase 1: Scaffold Fixes** - Fix breaking HA 2025.7 deprecations and session leak
-- [ ] **Phase 2: Config Flow + Coordinator** - Multi-step config wizard with live validation, coordinator with library polling
-- [ ] **Phase 3: Sensors** - Library count sensors for Radarr, Sonarr, Lidarr
-- [ ] **Phase 4: Movie & TV Search + Request** - TMDB search via WebSocket, Radarr/Sonarr request submission, card search UI
-- [ ] **Phase 5: Music Search + Lidarr Request** - MusicBrainz search, Lidarr request, music tab in card
-- [ ] **Phase 6: Library State + Card Polish** - "Already in library" detection, card editor, visual polish
-- [ ] **Phase 7: HACS Distribution** - hassfest/HACS validation, reconfigure flow, distribution prep
+- [ ] **Phase 1: Config Flow + API Clients** — Multi-step config wizard (TMDB → Radarr → Sonarr → Lidarr), API client classes, coordinator
+- [ ] **Phase 2: Sensors + Search** — Library count sensors, TMDB movie/TV search + MusicBrainz search via WebSocket
+- [ ] **Phase 3: Movie & TV Request** — Radarr movie request, Sonarr TV request with TMDB→TVDB translation, card Movies/TV tabs
+- [ ] **Phase 4: Music + Lidarr Request** — MusicBrainz search wiring, Lidarr artist request, card Music tab
+- [ ] **Phase 5: Library State + Card Polish + Validation** — "Already in library" detection, card editor, tests, CI
 
 ## Phase Details
 
-### Phase 1: Scaffold Fixes
-**Goal**: Integration loads cleanly on HA 2025.7+ with no deprecation warnings or session leaks
-**Depends on**: Nothing (first phase)
-**Requirements**: SCAF-01, SCAF-02, SCAF-03, DIST-02
-**Success Criteria** (what must be TRUE):
-  1. Integration installs and loads without errors on HA 2025.7+
-  2. No deprecation warnings in HA logs
-  3. hassfest validation passes
-  4. Card JS file is served at the registered static path
-**Plans**: TBD
-
-Plans:
-- [ ] 01-01: Fix static path, aiohttp session, manifest, and unique_id
-
-### Phase 2: Config Flow + Coordinator
+### Phase 1: Config Flow + API Clients
 **Goal**: User can set up the integration with live API validation for TMDB and all arr services; coordinator polls library counts
-**Depends on**: Phase 1
-**Requirements**: CONF-01, CONF-02, CONF-03, CONF-04, CONF-05, CONF-06
-**Success Criteria** (what must be TRUE):
+**Depends on**: Template overlay (done)
+**Requirements**: CONF-01, CONF-02, CONF-03, CONF-04, CONF-05, CONF-06, SENS-04
+**Files to customize**:
+  - `const.py` — All CONF_ constants, API base URLs, quality profile/root folder constants
+  - `api.py` — Multi-service API client: TMDB, Radarr v3, Sonarr v3, Lidarr v1, MusicBrainz
+  - `config_flow.py` — 4-step wizard: TMDB → Radarr (optional) → Sonarr (optional) → Lidarr (optional) with live validation
+  - `coordinator.py` — Poll library counts from all configured arr services every 5 min
+  - `strings.json` + `translations/en.json` — 4-step flow descriptions
+  - `__init__.py` — Wire coordinator + clients into runtime_data
+**Success Criteria**:
   1. Config flow validates TMDB API key with test search
   2. Config flow validates each arr service connection (optional skip)
-  3. Quality profiles and root folders fetched and stored from each arr service
-  4. Coordinator polls library counts every 5 minutes without errors
-**Plans**: TBD
+  3. Quality profiles and root folders fetched and stored
+  4. Coordinator polls library counts every 5 minutes
 
 Plans:
-- [ ] 02-01: Implement multi-step config flow with TMDB + arr validation
-- [ ] 02-02: Implement DataUpdateCoordinator with library count polling
+- [ ] 01-01: Build API client classes and multi-step config flow with live validation
 
-### Phase 3: Sensors
-**Goal**: Library count sensors appear in HA and reflect real data from arr services
+### Phase 2: Sensors + Search
+**Goal**: Library count sensors visible in HA; WebSocket search commands return TMDB and MusicBrainz results
+**Depends on**: Phase 1
+**Requirements**: SENS-01, SENS-02, SENS-03, SRCH-01, SRCH-02, SRCH-03, SRCH-04, SRCH-05
+**Files to customize**:
+  - `sensor.py` — 3 conditional sensors: Radarr movies, Sonarr series, Lidarr artists
+  - `websocket.py` — 3 search commands: search_movies (TMDB), search_tv (TMDB), search_music (MusicBrainz)
+**Success Criteria**:
+  1. Library count sensors show correct values (only for configured services)
+  2. Movie/TV search returns TMDB results with posters
+  3. Music search returns MusicBrainz results
+  4. TMDB API key never exposed to card/browser
+
+Plans:
+- [ ] 02-01: Implement sensors and WebSocket search commands
+
+### Phase 3: Movie & TV Request
+**Goal**: Users can request movies to Radarr and TV series to Sonarr from the card
 **Depends on**: Phase 2
-**Requirements**: SENS-01, SENS-02, SENS-03, SENS-04
-**Success Criteria** (what must be TRUE):
-  1. Radarr movie count sensor shows correct value
-  2. Sonarr series count sensor shows correct value
-  3. Lidarr artist count sensor shows correct value
-  4. Sensors update automatically every 5 minutes
-**Plans**: TBD
+**Requirements**: REQT-01, REQT-02, REQT-04, CARD-01, CARD-02, CARD-03, CARD-04
+**Files to customize**:
+  - `services.py` — `request_movie` (Radarr POST) and `request_series` (TMDB→TVDB + Sonarr POST)
+  - `services.yaml` — Movie and TV request schemas
+  - `frontend/requestarr-card.js` — Tabbed card with Movies/TV tabs, search UI, results, request buttons
+**Success Criteria**:
+  1. Movie request adds to Radarr with correct quality profile + root folder
+  2. TV request translates TMDB→TVDB ID and adds to Sonarr
+  3. Card shows Movies/TV tabs with search and request flow
+  4. TMDB poster thumbnails display in results
 
 Plans:
-- [ ] 03-01: Implement CoordinatorEntity sensors for all three arr services
+- [ ] 03-01: Implement movie/TV request services with TVDB translation
+- [ ] 03-02: Build card Movies/TV tabs with search and request UI
 
-### Phase 4: Movie & TV Search + Request
-**Goal**: Users can search for movies and TV shows from the card and submit requests to Radarr/Sonarr
+### Phase 4: Music + Lidarr Request
+**Goal**: Users can search for music and request artists to Lidarr
 **Depends on**: Phase 3
-**Requirements**: SRCH-01, SRCH-02, SRCH-04, SRCH-05, REQT-01, REQT-02, REQT-04, CARD-01, CARD-02, CARD-03, CARD-04
-**Success Criteria** (what must be TRUE):
-  1. Card search returns TMDB results with posters, titles, years, and descriptions
-  2. Movie request successfully adds to Radarr with correct quality profile
-  3. TV request successfully adds to Sonarr (TMDB→TVDB ID translation works)
-  4. Card shows tabbed interface with Movies and TV tabs
-  5. TMDB API key never appears in card JavaScript or browser network requests
-**Plans**: TBD
+**Requirements**: SRCH-03 (card wiring), REQT-03
+**Files to customize**:
+  - `services.py` — Add `request_artist` (Lidarr POST with foreignArtistId/MBID)
+  - `services.yaml` — Artist request schema
+  - `frontend/requestarr-card.js` — Add Music tab
+**Success Criteria**:
+  1. MusicBrainz artist search returns results with User-Agent compliance
+  2. Artist request adds to Lidarr with correct quality profile + root folder
+  3. Music tab in card works end-to-end
 
 Plans:
-- [ ] 04-01: Implement WebSocket search commands (TMDB movie + TV)
-- [ ] 04-02: Implement Radarr movie request service
-- [ ] 04-03: Implement Sonarr TV request service with TVDB translation
-- [ ] 04-04: Build card search UI with results display and request buttons
+- [ ] 04-01: Implement Lidarr request service and Music card tab
 
-### Phase 5: Music Search + Lidarr Request
-**Goal**: Users can search for music artists and submit requests to Lidarr
+### Phase 5: Library State + Card Polish + Validation
+**Goal**: "Already in library" badges, visual card editor, tests, CI validation
 **Depends on**: Phase 4
-**Requirements**: SRCH-03, REQT-03
-**Success Criteria** (what must be TRUE):
-  1. MusicBrainz artist search returns results with correct User-Agent header
-  2. Artist request successfully adds to Lidarr with foreignArtistId (MBID)
-  3. Music tab in card works end-to-end (search → display → request)
-**Plans**: TBD
-
-Plans:
-- [ ] 05-01: Implement MusicBrainz search + Lidarr request backend
-- [ ] 05-02: Add music tab to card UI
-
-### Phase 6: Library State + Card Polish
-**Goal**: Card shows whether media is already in library; visual card editor works
-**Depends on**: Phase 5
 **Requirements**: REQT-05, CARD-05
-**Success Criteria** (what must be TRUE):
-  1. Search results show "In Library" badge for movies already in Radarr
-  2. Search results show "In Library" badge for TV series already in Sonarr
-  3. Search results show "In Library" badge for artists already in Lidarr
-  4. Visual card editor allows configuration of all card settings
-**Plans**: TBD
+**Files to customize**:
+  - `coordinator.py` — Extend to fetch library TMDB/TVDB/MBID lists for state detection
+  - `frontend/requestarr-card.js` — "In Library" badges on search results, visual card editor
+  - `tests/` — Update all tests for Requestarr-specific logic
+  - `README.md` — Final documentation
+**Success Criteria**:
+  1. Search results show "In Library" badge for media already in arr libraries
+  2. Visual card editor configures all settings
+  3. All tests pass, hassfest + hacs/action CI passes
+  4. README documents installation, config flow, card usage, service examples
 
 Plans:
-- [ ] 06-01: Implement library state detection across all three services
-- [ ] 06-02: Build visual card editor
-
-### Phase 7: HACS Distribution
-**Goal**: Integration is ready for public HACS distribution
-**Depends on**: Phase 6
-**Requirements**: DIST-01, DIST-03
-**Success Criteria** (what must be TRUE):
-  1. hassfest CI passes
-  2. hacs/action CI passes
-  3. Tagged release created on GitHub
-  4. Integration installable via HACS custom repository
-**Plans**: TBD
-
-Plans:
-- [ ] 07-01: HACS packaging, CI validation, and release prep
+- [ ] 05-01: Implement library state detection and "In Library" badges
+- [ ] 05-02: Build card editor, update tests, validate CI
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scaffold Fixes | 0/1 | Not started | - |
-| 2. Config Flow + Coordinator | 0/2 | Not started | - |
-| 3. Sensors | 0/1 | Not started | - |
-| 4. Movie & TV Search + Request | 0/4 | Not started | - |
-| 5. Music Search + Lidarr | 0/2 | Not started | - |
-| 6. Library State + Card Polish | 0/2 | Not started | - |
-| 7. HACS Distribution | 0/1 | Not started | - |
+| 1. Config Flow + API Clients | 0/1 | Not started | - |
+| 2. Sensors + Search | 0/1 | Not started | - |
+| 3. Movie & TV Request | 0/2 | Not started | - |
+| 4. Music + Lidarr Request | 0/1 | Not started | - |
+| 5. Library State + Card Polish + Validation | 0/2 | Not started | - |

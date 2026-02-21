@@ -1,0 +1,16 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v1.0
+_src_path: /home/dab/Projects/ha-hacs-template
+author_name: Dabentz
+documentation_url: https://github.com/Dabentz/ha-requestarr
+integration_type: service
+iot_class: cloud_polling
+issue_tracker_url: https://github.com/Dabentz/ha-requestarr/issues
+project_description: HA-native media request dashboard for Radarr, Sonarr, and Lidarr.
+project_domain: requestarr
+project_name: Requestarr
+use_multi_step_config_flow: true
+use_secondary_coordinator: false
+use_services: true
+use_websocket: true
+version: 0.1.0

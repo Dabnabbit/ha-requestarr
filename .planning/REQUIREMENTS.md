@@ -1,17 +1,18 @@
 # Requirements: Requestarr
 
 **Defined:** 2026-02-19
+**Updated:** 2026-02-20 (template overlay applied, scaffold/distribution requirements satisfied)
 **Core Value:** Users can search for media and submit requests to their arr stack from a single HA dashboard card — no separate app, no separate auth, no separate container.
 
 ## v1 Requirements
 
 Requirements for initial release. Each maps to roadmap phases.
 
-### Scaffold & Foundation
+### Scaffold & Foundation (Satisfied by Template)
 
-- [ ] **SCAF-01**: Integration loads on HA 2025.7+ without deprecation warnings (async static paths, shared aiohttp session)
-- [ ] **SCAF-02**: `manifest.json` passes hassfest validation (correct `iot_class`, `version`, `unique_id` support)
-- [ ] **SCAF-03**: Config entry has unique_id to prevent duplicate entries for same TMDB key
+- [x] **SCAF-01**: Integration loads on HA 2025.7+ without deprecation warnings (async static paths, shared aiohttp session) — *Template: async_register_static_paths, async_get_clientsession*
+- [x] **SCAF-02**: `manifest.json` passes hassfest validation (correct `iot_class: cloud_polling`, `version`, `unique_id` support) — *Template: correct manifest with dependencies [frontend, http, websocket_api]*
+- [x] **SCAF-03**: Config entry has unique_id to prevent duplicate entries for same TMDB key — *Template: unique_id + _abort_if_unique_id_configured() pattern (customize to use TMDB key)*
 
 ### Configuration
 
@@ -53,11 +54,11 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **CARD-04**: Request button on each result with visual feedback (Requested state)
 - [ ] **CARD-05**: Visual card editor for configuration
 
-### Distribution
+### Distribution (Satisfied by Template)
 
-- [ ] **DIST-01**: HACS-compatible (hacs.json, manifest.json, correct file structure)
-- [ ] **DIST-02**: Frontend card served via integration's async static path registration
-- [ ] **DIST-03**: CI passes hassfest and hacs/action validation
+- [x] **DIST-01**: HACS-compatible (hacs.json, manifest.json, correct file structure) — *Template: correct structure*
+- [x] **DIST-02**: Frontend card served via integration's async static path registration — *Template: StaticPathConfig in async_setup()*
+- [x] **DIST-03**: CI passes hassfest and hacs/action validation — *Template: .github/workflows/validate.yml*
 
 ## v2 Requirements
 
@@ -93,43 +94,45 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCAF-01 | Phase 1 | Pending |
-| SCAF-02 | Phase 1 | Pending |
-| SCAF-03 | Phase 1 | Pending |
-| CONF-01 | Phase 2 | Pending |
-| CONF-02 | Phase 2 | Pending |
-| CONF-03 | Phase 2 | Pending |
-| CONF-04 | Phase 2 | Pending |
-| CONF-05 | Phase 2 | Pending |
-| CONF-06 | Phase 2 | Pending |
-| SENS-01 | Phase 3 | Pending |
-| SENS-02 | Phase 3 | Pending |
-| SENS-03 | Phase 3 | Pending |
-| SENS-04 | Phase 3 | Pending |
-| SRCH-01 | Phase 4 | Pending |
-| SRCH-02 | Phase 4 | Pending |
-| SRCH-03 | Phase 5 | Pending |
-| SRCH-04 | Phase 4 | Pending |
-| SRCH-05 | Phase 4 | Pending |
-| REQT-01 | Phase 4 | Pending |
-| REQT-02 | Phase 4 | Pending |
-| REQT-03 | Phase 5 | Pending |
-| REQT-04 | Phase 4 | Pending |
-| REQT-05 | Phase 6 | Pending |
-| CARD-01 | Phase 4 | Pending |
-| CARD-02 | Phase 4 | Pending |
-| CARD-03 | Phase 4 | Pending |
-| CARD-04 | Phase 4 | Pending |
-| CARD-05 | Phase 6 | Pending |
-| DIST-01 | Phase 7 | Pending |
-| DIST-02 | Phase 1 | Pending |
-| DIST-03 | Phase 7 | Pending |
+| SCAF-01 | Template | **Done** |
+| SCAF-02 | Template | **Done** |
+| SCAF-03 | Template | **Done** |
+| CONF-01 | Phase 1 | Pending |
+| CONF-02 | Phase 1 | Pending |
+| CONF-03 | Phase 1 | Pending |
+| CONF-04 | Phase 1 | Pending |
+| CONF-05 | Phase 1 | Pending |
+| CONF-06 | Phase 1 | Pending |
+| SENS-01 | Phase 2 | Pending |
+| SENS-02 | Phase 2 | Pending |
+| SENS-03 | Phase 2 | Pending |
+| SENS-04 | Phase 1 | Pending |
+| SRCH-01 | Phase 2 | Pending |
+| SRCH-02 | Phase 2 | Pending |
+| SRCH-03 | Phase 2 | Pending |
+| SRCH-04 | Phase 2 | Pending |
+| SRCH-05 | Phase 2 | Pending |
+| REQT-01 | Phase 3 | Pending |
+| REQT-02 | Phase 3 | Pending |
+| REQT-03 | Phase 4 | Pending |
+| REQT-04 | Phase 3 | Pending |
+| REQT-05 | Phase 5 | Pending |
+| CARD-01 | Phase 3 | Pending |
+| CARD-02 | Phase 3 | Pending |
+| CARD-03 | Phase 3 | Pending |
+| CARD-04 | Phase 3 | Pending |
+| CARD-05 | Phase 5 | Pending |
+| DIST-01 | Template | **Done** |
+| DIST-02 | Template | **Done** |
+| DIST-03 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 31 total
+- Satisfied by template: 6 (SCAF-01/02/03, DIST-01/02/03)
+- Remaining: 25
 - Mapped to phases: 31
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-19*
-*Last updated: 2026-02-19 after initial definition*
+*Last updated: 2026-02-20 after template overlay*

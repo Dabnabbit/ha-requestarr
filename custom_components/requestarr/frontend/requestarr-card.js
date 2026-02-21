@@ -1,8 +1,8 @@
 /**
  * Requestarr Card
  *
- * A Lovelace card for searching and requesting media
- * from TMDB via Radarr, Sonarr, and Lidarr.
+ * A template Lovelace card for Home Assistant.
+ * Replace this with your project-specific card implementation.
  */
 
 const LitElement = customElements.get("hui-masonry-view")
@@ -24,350 +24,134 @@ class RequestarrCard extends LitElement {
     return {
       hass: { type: Object },
       config: { type: Object },
-      _activeTab: { type: String },
-      _searchQuery: { type: String },
-      _searchResults: { type: Array },
-      _searching: { type: Boolean },
     };
-  }
-
-  constructor() {
-    super();
-    this._activeTab = "movies";
-    this._searchQuery = "";
-    this._searchResults = [];
-    this._searching = false;
   }
 
   static getConfigElement() {
     return document.createElement("requestarr-card-editor");
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass) {
+    if (!hass) {
+      return {
+        header: "Requestarr",
+        entity: "",
+      };
+    }
+    const entities = Object.keys(hass.states);
+    const sensorEntity = entities.find((e) => e.startsWith("sensor."));
     return {
-      header: "Media Requests",
+      header: "Requestarr",
+      entity: sensorEntity || "",
     };
   }
 
   setConfig(config) {
-    if (!config) throw new Error("Invalid configuration");
-    this.config = { header: "Media Requests", ...config };
+    if (!config) {
+      throw new Error("Invalid configuration");
+    }
+    this.config = {
+      header: "Requestarr",
+      ...config,
+    };
   }
 
   getCardSize() {
-    return 5;
+    return 3;
+  }
+
+  getGridOptions() {
+    return {
+      rows: 3,
+      columns: 6,
+      min_rows: 2,
+      min_columns: 3,
+    };
   }
 
   render() {
-    if (!this.hass || !this.config) return html``;
+    if (!this.hass || !this.config) {
+      return html`
+        <ha-card>
+          <div class="card-content loading">
+            <ha-spinner size="small"></ha-spinner>
+          </div>
+        </ha-card>
+      `;
+    }
+
+    const entityId = this.config.entity;
+
+    if (!entityId) {
+      return html`
+        <ha-card header="${this.config.header || ""}">
+          <div class="card-content">
+            <div class="empty">No entity configured</div>
+          </div>
+        </ha-card>
+      `;
+    }
+
+    const stateObj = this.hass.states[entityId];
+
+    if (!stateObj) {
+      return html`
+        <ha-card header="${this.config.header || ""}">
+          <div class="card-content">
+            <ha-alert alert-type="error">
+              Entity not available: ${entityId}
+            </ha-alert>
+          </div>
+        </ha-card>
+      `;
+    }
 
     return html`
-      <ha-card header="${this.config.header}">
+      <ha-card header="${this.config.header || ""}">
         <div class="card-content">
-          <div class="tabs">
-            <button
-              class="${this._activeTab === "movies" ? "active" : ""}"
-              @click="${() => this._setTab("movies")}"
-            >
-              Movies
-            </button>
-            <button
-              class="${this._activeTab === "tv" ? "active" : ""}"
-              @click="${() => this._setTab("tv")}"
-            >
-              TV Shows
-            </button>
-            <button
-              class="${this._activeTab === "music" ? "active" : ""}"
-              @click="${() => this._setTab("music")}"
-            >
-              Music
-            </button>
-          </div>
-
-          <div class="search-bar">
-            <input
-              type="text"
-              placeholder="Search ${this._activeTab}..."
-              .value="${this._searchQuery}"
-              @input="${this._onSearchInput}"
-              @keydown="${this._onSearchKeydown}"
-            />
-            <button class="search-btn" @click="${this._doSearch}">
-              ${this._searching ? "..." : "Search"}
-            </button>
-          </div>
-
-          <div class="results">
-            ${this._searchResults.length === 0
-              ? html`<div class="empty">
-                  Search for ${this._activeTab} to request
-                </div>`
-              : this._searchResults.map(
-                  (item) => html`
-                    <div class="result-item">
-                      <div class="result-poster">
-                        ${item.poster_path
-                          ? html`<img
-                              src="https://image.tmdb.org/t/p/w92${item.poster_path}"
-                              alt="${item.title || item.name}"
-                            />`
-                          : html`<div class="no-poster">?</div>`}
-                      </div>
-                      <div class="result-info">
-                        <div class="result-title">
-                          ${item.title || item.name}
-                        </div>
-                        <div class="result-year">
-                          ${(item.release_date || item.first_air_date || "").substring(0, 4)}
-                        </div>
-                        <div class="result-overview">
-                          ${(item.overview || "").substring(0, 100)}${(item.overview || "").length > 100 ? "..." : ""}
-                        </div>
-                      </div>
-                      <button
-                        class="request-btn"
-                        @click="${() => this._requestItem(item)}"
-                      >
-                        Request
-                      </button>
-                    </div>
-                  `
-                )}
-          </div>
-
-          <div class="stats">
-            ${this._renderStats()}
+          <div class="state">
+            <span class="label">${stateObj.attributes.friendly_name || entityId}</span>
+            <span class="value">${stateObj.state}</span>
           </div>
         </div>
       </ha-card>
     `;
   }
 
-  _renderStats() {
-    const sensors = ["radarr_movies", "sonarr_series", "lidarr_artists"];
-    const icons = {
-      radarr_movies: "mdi:movie-outline",
-      sonarr_series: "mdi:television-classic",
-      lidarr_artists: "mdi:music",
-    };
-    const labels = {
-      radarr_movies: "Movies",
-      sonarr_series: "Series",
-      lidarr_artists: "Artists",
-    };
-
-    return html`
-      <div class="stats-row">
-        ${sensors.map((s) => {
-          const entityId = `sensor.requestarr_${s}`;
-          const state = this.hass.states[entityId];
-          if (!state || state.state === "unavailable") return html``;
-          return html`
-            <div class="stat">
-              <ha-icon icon="${icons[s]}"></ha-icon>
-              <span class="stat-value">${state.state}</span>
-              <span class="stat-label">${labels[s]}</span>
-            </div>
-          `;
-        })}
-      </div>
-    `;
-  }
-
-  _setTab(tab) {
-    this._activeTab = tab;
-    this._searchResults = [];
-    this._searchQuery = "";
-  }
-
-  _onSearchInput(ev) {
-    this._searchQuery = ev.target.value;
-  }
-
-  _onSearchKeydown(ev) {
-    if (ev.key === "Enter") this._doSearch();
-  }
-
-  async _doSearch() {
-    if (!this._searchQuery.trim()) return;
-    this._searching = true;
-
-    // Call HA service to search via the coordinator
-    // For now, use TMDB directly from the card as a fallback
-    const mediaType =
-      this._activeTab === "movies"
-        ? "movie"
-        : this._activeTab === "tv"
-          ? "tv"
-          : "multi";
-
-    try {
-      // TODO: Call via hass.callWS or a custom service
-      // For scaffold purposes, show placeholder behavior
-      this._searchResults = [];
-    } finally {
-      this._searching = false;
-    }
-  }
-
-  _requestItem(item) {
-    // TODO: Call hass service to send request to Radarr/Sonarr/Lidarr
-    const event = new CustomEvent("hass-notification", {
-      detail: { message: `Requested: ${item.title || item.name}` },
-      bubbles: true,
-      composed: true,
-    });
-    this.dispatchEvent(event);
-  }
-
   static get styles() {
     return css`
-      ha-card {
-        padding: 16px;
+      :host {
+        display: block;
       }
       .card-content {
         padding: 0 16px 16px;
       }
-      .tabs {
+      .loading {
         display: flex;
-        gap: 4px;
-        margin-bottom: 16px;
-        border-bottom: 2px solid var(--divider-color, #e0e0e0);
-        padding-bottom: 4px;
-      }
-      .tabs button {
-        flex: 1;
-        padding: 8px 16px;
-        border: none;
-        background: transparent;
-        color: var(--secondary-text-color);
-        font-size: 14px;
-        cursor: pointer;
-        border-radius: 4px 4px 0 0;
-        transition: all 0.2s;
-      }
-      .tabs button.active {
-        color: var(--primary-color);
-        background: var(--primary-color-light, rgba(var(--rgb-primary-color), 0.1));
-        font-weight: 600;
-      }
-      .tabs button:hover {
-        background: var(--secondary-background-color);
-      }
-      .search-bar {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 16px;
-      }
-      .search-bar input {
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid var(--divider-color, #e0e0e0);
-        border-radius: 4px;
-        background: var(--card-background-color);
-        color: var(--primary-text-color);
-        font-size: 14px;
-      }
-      .search-bar input:focus {
-        outline: none;
-        border-color: var(--primary-color);
-      }
-      .search-btn {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 4px;
-        background: var(--primary-color);
-        color: var(--text-primary-color, white);
-        cursor: pointer;
-        font-size: 14px;
-      }
-      .results {
-        max-height: 400px;
-        overflow-y: auto;
-      }
-      .result-item {
-        display: flex;
-        gap: 12px;
-        padding: 12px 0;
-        border-bottom: 1px solid var(--divider-color, #e0e0e0);
-        align-items: flex-start;
-      }
-      .result-poster img {
-        width: 60px;
-        border-radius: 4px;
-      }
-      .no-poster {
-        width: 60px;
-        height: 90px;
-        background: var(--secondary-background-color);
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
         justify-content: center;
-        color: var(--secondary-text-color);
-        font-size: 24px;
+        align-items: center;
+        padding: 32px 16px;
       }
-      .result-info {
-        flex: 1;
-        min-width: 0;
+      .state {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
       }
-      .result-title {
-        font-weight: 600;
+      .label {
+        font-weight: 500;
         color: var(--primary-text-color);
       }
-      .result-year {
-        font-size: 12px;
-        color: var(--secondary-text-color);
-      }
-      .result-overview {
-        font-size: 12px;
-        color: var(--secondary-text-color);
-        margin-top: 4px;
-        line-height: 1.3;
-      }
-      .request-btn {
-        padding: 6px 12px;
-        border: none;
-        border-radius: 4px;
-        background: var(--primary-color);
-        color: var(--text-primary-color, white);
-        cursor: pointer;
-        font-size: 12px;
-        white-space: nowrap;
-        align-self: center;
+      .value {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: var(--primary-color);
       }
       .empty {
         color: var(--secondary-text-color);
         font-style: italic;
         text-align: center;
-        padding: 32px 16px;
-      }
-      .stats-row {
-        display: flex;
-        justify-content: space-around;
-        padding-top: 16px;
-        border-top: 1px solid var(--divider-color, #e0e0e0);
-        margin-top: 16px;
-      }
-      .stat {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-      }
-      .stat ha-icon {
-        color: var(--primary-color);
-        --mdc-icon-size: 20px;
-      }
-      .stat-value {
-        font-size: 1.2em;
-        font-weight: bold;
-        color: var(--primary-text-color);
-      }
-      .stat-label {
-        font-size: 11px;
-        color: var(--secondary-text-color);
+        padding: 16px;
       }
     `;
   }
@@ -389,7 +173,9 @@ class RequestarrCardEditor extends LitElement {
   }
 
   render() {
-    if (!this.hass || !this.config) return html``;
+    if (!this.hass || !this.config) {
+      return html``;
+    }
 
     return html`
       <div class="editor">
@@ -398,12 +184,23 @@ class RequestarrCardEditor extends LitElement {
           .value="${this.config.header || ""}"
           @input="${this._headerChanged}"
         ></ha-textfield>
+        <ha-entity-picker
+          label="Entity"
+          .hass="${this.hass}"
+          .value="${this.config.entity || ""}"
+          @value-changed="${this._entityChanged}"
+          allow-custom-entity
+        ></ha-entity-picker>
       </div>
     `;
   }
 
   _headerChanged(ev) {
     this._updateConfig("header", ev.target.value);
+  }
+
+  _entityChanged(ev) {
+    this._updateConfig("entity", ev.detail.value);
   }
 
   _updateConfig(key, value) {
@@ -429,13 +226,23 @@ class RequestarrCardEditor extends LitElement {
   }
 }
 
-customElements.define("requestarr-card", RequestarrCard);
-customElements.define("requestarr-card-editor", RequestarrCardEditor);
+if (!customElements.get("requestarr-card")) {
+  customElements.define(
+    "requestarr-card",
+    RequestarrCard
+  );
+}
+if (!customElements.get("requestarr-card-editor")) {
+  customElements.define(
+    "requestarr-card-editor",
+    RequestarrCardEditor
+  );
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "requestarr-card",
   name: "Requestarr Card",
-  description: "Search and request movies, TV shows, and music",
+  description: "HA-native media request dashboard for Radarr, Sonarr, and Lidarr.",
   preview: true,
 });
