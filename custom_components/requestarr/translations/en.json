@@ -6,10 +6,11 @@
         "description": "Enter the connection details for your service.",
         "data": {
           "host": "Host",
-          "port": "Port"
+          "port": "Port",
+          "use_ssl": "Use SSL"
         }
-      }
-      ,"credentials": {
+      },
+      "credentials": {
         "title": "Authentication",
         "description": "Enter your API credentials.",
         "data": {
@@ -33,9 +34,15 @@
         "data": {
           "host": "Host",
           "port": "Port",
+          "use_ssl": "Use SSL",
           "api_key": "API Key"
         }
       }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
     }
   }
 }

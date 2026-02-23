@@ -13,7 +13,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import ApiClient, CannotConnectError
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import CONF_USE_SSL, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,8 +36,9 @@ class TemplateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.client = ApiClient(
             host=entry.data[CONF_HOST],
             port=entry.data[CONF_PORT],
-            api_key=entry.data[CONF_API_KEY],
+            api_key=entry.data.get(CONF_API_KEY, ""),
             session=session,
+            use_ssl=entry.data.get(CONF_USE_SSL, False),
         )
 
     async def _async_update_data(self) -> dict[str, Any]:

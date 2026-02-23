@@ -1,5 +1,5 @@
 query:
-  description: "Query the Requestarr service and optionally return results."
+  description: "Query the Requestarr service."
   fields:
     query:
       required: true
@@ -7,5 +7,3 @@ query:
       example: "search term"
       selector:
         text:
-  response:
-    optional: true

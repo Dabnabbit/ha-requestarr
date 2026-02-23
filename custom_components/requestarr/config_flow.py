@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import ApiClient, CannotConnectError as ApiCannotConnect, InvalidAuthError as ApiInvalidAuth
-from .const import DEFAULT_PORT, DOMAIN
+from .const import CONF_USE_SSL, DEFAULT_PORT, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,12 +22,13 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
+        vol.Optional(CONF_USE_SSL, default=False): bool,
     }
 )
 
 STEP_CREDENTIALS_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_API_KEY): str,
+        vol.Optional(CONF_API_KEY, default=""): str,
     }
 )
 
@@ -50,8 +51,9 @@ async def _async_validate_connection(hass: HomeAssistant, user_input: dict) -> N
     client = ApiClient(
         host=user_input[CONF_HOST],
         port=user_input[CONF_PORT],
-        api_key=user_input[CONF_API_KEY],
+        api_key=user_input.get(CONF_API_KEY, ""),
         session=session,
+        use_ssl=user_input.get(CONF_USE_SSL, False),
     )
     try:
         await client.async_test_connection()
@@ -123,7 +125,9 @@ class TemplateConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="credentials",
-            data_schema=STEP_CREDENTIALS_SCHEMA,
+            data_schema=self.add_suggested_values_to_schema(
+                STEP_CREDENTIALS_SCHEMA, user_input
+            ),
             errors=errors,
         )
 
@@ -136,11 +140,27 @@ class OptionsFlowHandler(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Manage the options."""
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data={**self.config_entry.data, **user_input}
-            )
-            return self.async_create_entry(data={})
+            merged = {**self.config_entry.data, **user_input}
+            try:
+                await _async_validate_connection(self.hass, merged)
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except Exception:
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+            else:
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, data=merged
+                )
+                await self.hass.config_entries.async_reload(
+                    self.config_entry.entry_id
+                )
+                return self.async_create_entry(data={})
 
         return self.async_show_form(
             step_id="init",
@@ -155,9 +175,14 @@ class OptionsFlowHandler(OptionsFlow):
                         default=self.config_entry.data.get(CONF_PORT, DEFAULT_PORT),
                     ): int,
                     vol.Optional(
+                        CONF_USE_SSL,
+                        default=self.config_entry.data.get(CONF_USE_SSL, False),
+                    ): bool,
+                    vol.Optional(
                         CONF_API_KEY,
                         default=self.config_entry.data.get(CONF_API_KEY, ""),
                     ): str,
                 }
             ),
+            errors=errors,
         )
