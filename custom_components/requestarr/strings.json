@@ -1,48 +1,81 @@
 {
   "config": {
     "step": {
-      "user": {
-        "title": "Connect to Service",
-        "description": "Enter the connection details for your service.",
+      "radarr": {
+        "title": "Radarr Configuration",
+        "description": "Configure your Radarr server for movie management. Skip if you don't use Radarr.",
         "data": {
-          "host": "Host",
-          "port": "Port",
-          "use_ssl": "Use SSL"
+          "radarr_url": "Radarr URL",
+          "radarr_api_key": "API Key",
+          "radarr_verify_ssl": "Verify SSL certificate",
+          "skip_radarr": "I don't use Radarr"
+        },
+        "data_description": {
+          "radarr_url": "Base URL of your Radarr instance (e.g., {url_example})"
         }
       },
-      "credentials": {
-        "title": "Authentication",
-        "description": "Enter your API credentials.",
+      "sonarr": {
+        "title": "Sonarr Configuration",
+        "description": "Configure your Sonarr server for TV series management. Skip if you don't use Sonarr.",
         "data": {
-          "api_key": "API Key"
+          "sonarr_url": "Sonarr URL",
+          "sonarr_api_key": "API Key",
+          "sonarr_verify_ssl": "Verify SSL certificate",
+          "skip_sonarr": "I don't use Sonarr"
+        },
+        "data_description": {
+          "sonarr_url": "Base URL of your Sonarr instance (e.g., {url_example})"
+        }
+      },
+      "lidarr": {
+        "title": "Lidarr Configuration",
+        "description": "Configure your Lidarr server for music management. Skip if you don't use Lidarr.",
+        "data": {
+          "lidarr_url": "Lidarr URL",
+          "lidarr_api_key": "API Key",
+          "lidarr_verify_ssl": "Verify SSL certificate",
+          "skip_lidarr": "I don't use Lidarr"
+        },
+        "data_description": {
+          "lidarr_url": "Base URL of your Lidarr instance (e.g., {url_example})"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect",
-      "invalid_auth": "Invalid authentication",
-      "unknown": "Unexpected error"
+      "cannot_connect": "Unable to connect. Check the URL and ensure the service is running.",
+      "invalid_auth": "Invalid API key. Check your API key in the service settings.",
+      "cannot_fetch_profiles": "Connected but could not fetch profiles. Check API key permissions.",
+      "no_services": "At least one service must be configured.",
+      "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "Service is already configured"
+      "already_configured": "Requestarr is already configured."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Update Service Settings",
+        "title": "Requestarr Settings",
+        "description": "Adjust quality profiles, root folders, and SSL settings. Enable 'Refresh profiles' to re-fetch options from your arr services.",
         "data": {
-          "host": "Host",
-          "port": "Port",
-          "use_ssl": "Use SSL",
-          "api_key": "API Key"
+          "radarr_quality_profile_id": "Radarr Quality Profile",
+          "radarr_root_folder": "Radarr Root Folder",
+          "radarr_verify_ssl": "Radarr: Verify SSL",
+          "sonarr_quality_profile_id": "Sonarr Quality Profile",
+          "sonarr_root_folder": "Sonarr Root Folder",
+          "sonarr_verify_ssl": "Sonarr: Verify SSL",
+          "lidarr_quality_profile_id": "Lidarr Quality Profile",
+          "lidarr_root_folder": "Lidarr Root Folder",
+          "lidarr_metadata_profile_id": "Lidarr Metadata Profile",
+          "lidarr_verify_ssl": "Lidarr: Verify SSL",
+          "refresh_profiles": "Refresh profiles from services"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect",
-      "invalid_auth": "Invalid authentication",
-      "unknown": "Unexpected error"
+      "cannot_connect": "Unable to connect to service.",
+      "invalid_auth": "Invalid API key.",
+      "unknown": "An unexpected error occurred."
     }
   }
 }
