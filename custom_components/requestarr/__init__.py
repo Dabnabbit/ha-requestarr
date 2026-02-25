@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, FRONTEND_SCRIPT_URL
-from .coordinator import TemplateCoordinator
+from .coordinator import RequestarrCoordinator
 
 from .websocket import async_setup_websocket
 
@@ -32,7 +32,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 class RequestarrData:
     """Data for the Requestarr integration."""
 
-    coordinator: TemplateCoordinator
+    coordinator: RequestarrCoordinator
 
 
 
@@ -95,7 +95,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: RequestarrConfigEntry) -> bool:
     """Set up Requestarr from a config entry."""
-    coordinator = TemplateCoordinator(hass, entry)
+    coordinator = RequestarrCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 
 
