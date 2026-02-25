@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Search for media and submit requests to arr stack from a single HA dashboard card — no separate app, no separate auth, no separate container
-**Current focus:** Phase 1 context gathered. Ready to plan.
+**Current focus:** Phase 1 complete. Ready for Phase 2.
 
 ## Current Position
 
-Phase: 1 of 5 (Config Flow + API Clients)
+Phase: 2 of 5 (Sensors + Search)
 Plan: 0 of 1 in current phase
-Status: Context gathered, ready to plan
-Last activity: 2026-02-25 — Phase 1 context discussion (config flow, profiles, connections, options, URLs, coordinator)
+Status: Phase 1 complete, ready to plan Phase 2
+Last activity: 2026-02-25 — Phase 1 executed: uniform ArrClient, 3-step config flow, partial-failure coordinator
 
-Progress: [█░░░░░░░░░] 15% (scaffold + distribution satisfied by template)
+Progress: [███░░░░░░░] 30% (Phase 1 complete)
 
 ## What the Template Provides (Already Done)
 
@@ -58,9 +58,15 @@ The ha-hacs-template v1.0 overlay satisfies:
 - `.planning/research/MUSIC_UX.md` — Music tab UX research: Lidarr, Ombi, MusicBrainz, streaming apps (2026-02-23)
 - `.planning/research/ARR_LOOKUP_API.md` — Arr lookup API as primary search source (2026-02-23)
 
+- [2026-02-25]: **Phase 1 executed** — single ArrClient class for all arr services, parameterized by service_type
+- [2026-02-25]: **Unique_id = DOMAIN** — singleton integration, one Requestarr per HA instance
+- [2026-02-25]: **First profile/folder used as default** — arr services don't have isDefault field
+- [2026-02-25]: **Options flow dynamic schema** — only shows fields for configured services
+- [2026-02-25]: **Partial failure coordinator** — individual service errors don't fail entire update
+
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
@@ -69,5 +75,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-25
-Stopped at: Phase 1 context gathered
-Resume action: Run /gsd:plan-phase 1 to plan the uniform arr API client and 3-step config flow
+Stopped at: Phase 1 execution complete
+Resume action: Run /gsd:discuss-phase 2 or /gsd:plan-phase 2 for Sensors + Search
