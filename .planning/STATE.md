@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Search for media and submit requests to arr stack from a single HA dashboard card — no separate app, no separate auth, no separate container
-**Current focus:** Phase 1 complete. Ready for Phase 2.
+**Current focus:** Phase 2 complete. Ready for Phase 3.
 
 ## Current Position
 
-Phase: 2 of 5 (Sensors + Search)
-Plan: 0 of 1 in current phase
-Status: Phase 1 complete, ready to plan Phase 2
-Last activity: 2026-02-25 — Phase 1 executed: uniform ArrClient, 3-step config flow, partial-failure coordinator
+Phase: 3 of 5 (Movie & TV Request)
+Plan: 0 of 2 in current phase
+Status: Phase 2 complete, ready to plan Phase 3
+Last activity: 2026-02-27 — Phase 2 executed: service status sensors, WebSocket search commands with result normalization
 
-Progress: [███░░░░░░░] 30% (Phase 1 complete)
+Progress: [█████░░░░░] 50% (Phase 2 complete)
 
 ## What the Template Provides (Already Done)
 
@@ -63,6 +63,12 @@ The ha-hacs-template v1.0 overlay satisfies:
 - [2026-02-25]: **First profile/folder used as default** — arr services don't have isDefault field
 - [2026-02-25]: **Options flow dynamic schema** — only shows fields for configured services
 - [2026-02-25]: **Partial failure coordinator** — individual service errors don't fail entire update
+- [2026-02-27]: **Phase 2 executed** — conditional service status sensors, three WebSocket search commands
+- [2026-02-27]: **Sensor state = service status** — connected/disconnected/error with library_count as attribute
+- [2026-02-27]: **Search result normalization** — backend extracts remotePoster, rewrites TMDB to w300, passes TheTVDB/fanart.tv through
+- [2026-02-27]: **Structured WS error codes** — invalid_query, service_not_configured, service_unavailable
+- [2026-02-27]: **Search results self-contained** — include in_library, arr_id, external IDs, default profile name, root folder path
+- [2026-02-27]: **Profile name resolution** — stored profiles list matched by current quality_profile_id
 
 ### Pending Todos
 
@@ -75,6 +81,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-sensors-search/02-CONTEXT.md
-Resume action: Run /gsd:plan-phase 2 for Sensors + Search
+Stopped at: Phase 2 complete, verification pending
+Resume file: .planning/phases/02-sensors-search/02-01-SUMMARY.md
+Resume action: Run /gsd:plan-phase 3 for Movie & TV Request
