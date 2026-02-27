@@ -55,5 +55,20 @@ CONF_LIDARR_PROFILES = "lidarr_profiles"
 CONF_LIDARR_FOLDERS = "lidarr_folders"
 CONF_LIDARR_METADATA_PROFILES = "lidarr_metadata_profiles"
 
+# Lookup (search) endpoints per service
+LOOKUP_ENDPOINTS: dict[str, str] = {
+    SERVICE_RADARR: "/movie/lookup",
+    SERVICE_SONARR: "/series/lookup",
+    SERVICE_LIDARR: "/artist/lookup",
+}
+
+# WebSocket command types
+WS_TYPE_SEARCH_MOVIES = f"{DOMAIN}/search_movies"
+WS_TYPE_SEARCH_TV = f"{DOMAIN}/search_tv"
+WS_TYPE_SEARCH_MUSIC = f"{DOMAIN}/search_music"
+
+# Search limits
+MAX_SEARCH_RESULTS = 20
+
 # Frontend
 FRONTEND_SCRIPT_URL = f"/{DOMAIN}/{DOMAIN}-card.js"

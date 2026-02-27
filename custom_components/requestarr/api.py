@@ -8,7 +8,7 @@ from typing import Any
 
 import aiohttp
 
-from .const import API_VERSIONS, DEFAULT_TIMEOUT, LIBRARY_ENDPOINTS
+from .const import API_VERSIONS, DEFAULT_TIMEOUT, LIBRARY_ENDPOINTS, LOOKUP_ENDPOINTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -171,6 +171,18 @@ class ArrClient:
             List of metadata profile dicts with at least 'id' and 'name'.
         """
         return await self._request("GET", "/metadataprofile")
+
+    async def async_search(self, query: str) -> list[dict[str, Any]]:
+        """Search the arr service's lookup endpoint.
+
+        Args:
+            query: Search term.
+
+        Returns:
+            List of raw result dicts from the arr API.
+        """
+        endpoint = LOOKUP_ENDPOINTS[self._service_type]
+        return await self._request("GET", endpoint, params={"term": query})
 
     async def async_get_library_count(self) -> int:
         """Fetch the total number of items in the library.

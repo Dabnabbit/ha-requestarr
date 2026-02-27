@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.util import dt as dt_util
 
 from .api import ArrClient, CannotConnectError, InvalidAuthError
 from .const import (
@@ -93,6 +94,10 @@ class RequestarrCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Return list of configured service types."""
         return list(self._clients.keys())
 
+    def get_client(self, service_type: str) -> ArrClient | None:
+        """Return the ArrClient for a service type, or None if not configured."""
+        return self._clients.get(service_type)
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch library counts from all configured arr services.
 
@@ -109,12 +114,18 @@ class RequestarrCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             try:
                 count = await client.async_get_library_count()
                 data[f"{service_type}_count"] = count
+                data[f"{service_type}_last_sync"] = dt_util.utcnow().isoformat()
             except (CannotConnectError, InvalidAuthError) as err:
                 _LOGGER.warning(
                     "Failed to poll %s: %s", service_type, err
                 )
                 errors[service_type] = str(err)
                 data[f"{service_type}_count"] = None
+                # Preserve previous last_sync value on error
+                if self.data:
+                    data[f"{service_type}_last_sync"] = self.data.get(
+                        f"{service_type}_last_sync"
+                    )
 
         # If all configured services failed, raise UpdateFailed
         count_keys = [k for k in data if k.endswith("_count")]
