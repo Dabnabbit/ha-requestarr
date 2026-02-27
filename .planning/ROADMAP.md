@@ -18,7 +18,7 @@ Requestarr delivers an HA-native media request card in 5 phases. The ha-hacs-tem
 ## Phases
 
 - [x] **Phase 1: Config Flow + API Clients** — 3-step config wizard (Radarr → Sonarr → Lidarr), uniform arr API client, coordinator
-- [ ] **Phase 2: Sensors + Search** — Library count sensors, search via arr lookup endpoints through WebSocket
+- [x] **Phase 2: Sensors + Search** — Library count sensors, search via arr lookup endpoints through WebSocket
 - [ ] **Phase 3: Movie & TV Request** — Radarr movie request, Sonarr TV request (tvdbId in lookup), card Movies/TV tabs
 - [ ] **Phase 4: Music + Lidarr Request** — Lidarr artist lookup search, Lidarr artist request, card Music tab with circular avatars
 - [ ] **Phase 5: Library State + Card Polish + Validation** — "Already in library" badges, card editor, tests, CI
@@ -60,7 +60,7 @@ Plans:
   5. Arr API keys never exposed to card/browser — only public CDN URLs sent to frontend
 
 Plans:
-- [ ] 02-01: Implement sensors and WebSocket search commands via arr lookup endpoints
+- [x] 02-01: Implement sensors and WebSocket search commands via arr lookup endpoints
 
 ### Phase 3: Movie & TV Request
 **Goal**: Users can request movies to Radarr and TV series to Sonarr from the card
@@ -121,7 +121,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Config Flow + API Clients | 1/1 | Complete | 2026-02-25 |
-| 2. Sensors + Search | 0/1 | Not started | - |
+| 2. Sensors + Search | 1/1 | Complete | 2026-02-27 |
 | 3. Movie & TV Request | 0/2 | Not started | - |
 | 4. Music + Lidarr Request | 0/1 | Not started | - |
 | 5. Library State + Card Polish + Validation | 0/2 | Not started | - |
