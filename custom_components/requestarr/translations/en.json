@@ -1,4 +1,17 @@
 {
+  "entity": {
+    "sensor": {
+      "radarr": {
+        "name": "Radarr"
+      },
+      "sonarr": {
+        "name": "Sonarr"
+      },
+      "lidarr": {
+        "name": "Lidarr"
+      }
+    }
+  },
   "config": {
     "step": {
       "radarr": {
