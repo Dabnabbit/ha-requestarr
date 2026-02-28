@@ -20,7 +20,7 @@ Requestarr delivers an HA-native media request card in 5 phases. The ha-hacs-tem
 - [x] **Phase 1: Config Flow + API Clients** — 3-step config wizard (Radarr → Sonarr → Lidarr), uniform arr API client, coordinator
 - [x] **Phase 2: Sensors + Search** — Library count sensors, search via arr lookup endpoints through WebSocket
 - [x] **Phase 3: Movie & TV Request** — Radarr movie request, Sonarr TV request (tvdbId in lookup), card Movies/TV tabs (2026-02-27)
-- [ ] **Phase 4: Music + Lidarr Request** — Lidarr artist lookup search, Lidarr artist request, card Music tab with circular avatars
+- [x] **Phase 4: Music + Lidarr Request** — Lidarr artist lookup search, Lidarr artist request, card Music tab with circular avatars (2026-02-27)
 - [ ] **Phase 5: Library State + Card Polish + Validation** — "Already in library" badges, card editor, tests, CI
 
 ## Phase Details
@@ -93,7 +93,7 @@ Plans:
   4. Initials-based placeholder works for artists without fanart.tv images (~40-60%)
 
 Plans:
-- [ ] 04-01: Implement Lidarr request and Music card tab with circular avatars
+- [x] 04-01: Implement Lidarr request and Music card tab with circular avatars
 
 ### Phase 5: Library State + Card Polish + Validation
 **Goal**: "Already in library" badges, visual card editor, tests, CI validation
