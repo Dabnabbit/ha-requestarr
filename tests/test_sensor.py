@@ -1,82 +1,54 @@
-"""Tests for Requestarr sensor platform."""
+"""Tests for Requestarr sensors."""
 
 from unittest.mock import AsyncMock, patch
 
-from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from custom_components.requestarr.const import DOMAIN
+from custom_components.requestarr.api import ArrClient
 
 
-async def test_sensor_value(hass: HomeAssistant) -> None:
-    """Test sensor entity reports correct state from coordinator data."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={CONF_HOST: "192.168.1.100", CONF_PORT: 8080, CONF_API_KEY: "test-key"},
-    )
-    entry.add_to_hass(hass)
-
-    mock_data = {"status": "ok"}
-
-    with patch(
-        "custom_components.requestarr.coordinator.ApiClient.async_get_data",
-        new_callable=AsyncMock,
-        return_value=mock_data,
+async def test_sensor_created_for_configured_services(
+    hass: HomeAssistant, radarr_entry
+) -> None:
+    """Only sensors for configured services are created."""
+    radarr_entry.add_to_hass(hass)
+    with patch.object(
+        ArrClient, "async_get_library_count", new_callable=AsyncMock, return_value=10
     ):
-        assert await hass.config_entries.async_setup(entry.entry_id)
+        assert await hass.config_entries.async_setup(radarr_entry.entry_id)
         await hass.async_block_till_done()
 
-    state = hass.states.get(f"sensor.{entry.title.lower().replace(' ', '_')}_status")
+    # Radarr sensor should exist
+    radarr_states = [
+        k for k in hass.states.async_entity_ids("sensor")
+        if "radarr" in k
+    ]
+    assert len(radarr_states) >= 1
+
+    # Sonarr/Lidarr sensors should NOT exist (not configured)
+    sonarr_states = [
+        k for k in hass.states.async_entity_ids("sensor")
+        if "sonarr" in k
+    ]
+    assert len(sonarr_states) == 0
+
+
+async def test_sensor_library_count_attribute(
+    hass: HomeAssistant, radarr_entry
+) -> None:
+    """Sensor has library_count attribute matching coordinator data."""
+    radarr_entry.add_to_hass(hass)
+    with patch.object(
+        ArrClient, "async_get_library_count", new_callable=AsyncMock, return_value=42
+    ):
+        assert await hass.config_entries.async_setup(radarr_entry.entry_id)
+        await hass.async_block_till_done()
+
+    radarr_sensors = [
+        k for k in hass.states.async_entity_ids("sensor")
+        if "radarr" in k
+    ]
+    assert radarr_sensors
+    state = hass.states.get(radarr_sensors[0])
     assert state is not None
-    assert state.state == "ok"
-
-
-async def test_sensor_unique_id(hass: HomeAssistant) -> None:
-    """Test sensor entity has correct unique_id format."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={CONF_HOST: "192.168.1.100", CONF_PORT: 8080, CONF_API_KEY: "test-key"},
-    )
-    entry.add_to_hass(hass)
-
-    mock_data = {"status": "ok"}
-
-    with patch(
-        "custom_components.requestarr.coordinator.ApiClient.async_get_data",
-        new_callable=AsyncMock,
-        return_value=mock_data,
-    ):
-        assert await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-    entity_registry = hass.helpers.entity_registry.async_get(hass)
-    entity = entity_registry.async_get(
-        f"sensor.{entry.title.lower().replace(' ', '_')}_status"
-    )
-    assert entity is not None
-    assert entity.unique_id == f"{entry.entry_id}_status"
-
-
-async def test_binary_sensor_online(hass: HomeAssistant) -> None:
-    """Test binary sensor shows on when coordinator succeeds."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={CONF_HOST: "192.168.1.100", CONF_PORT: 8080, CONF_API_KEY: "test-key"},
-    )
-    entry.add_to_hass(hass)
-
-    with patch(
-        "custom_components.requestarr.coordinator.ApiClient.async_get_data",
-        new_callable=AsyncMock,
-        return_value={"status": "ok"},
-    ):
-        assert await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-    state = hass.states.get(
-        f"binary_sensor.{entry.title.lower().replace(' ', '_')}_status"
-    )
-    assert state is not None
-    assert state.state == "on"
+    assert state.attributes.get("library_count") == 42

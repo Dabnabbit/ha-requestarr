@@ -13,7 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import RequestarrConfigEntry
 from .const import DOMAIN
-from .coordinator import TemplateCoordinator
+from .coordinator import RequestarrCoordinator
 
 PARALLEL_UPDATES = 0
 
@@ -28,7 +28,7 @@ async def async_setup_entry(
     async_add_entities([TemplateStatusSensor(coordinator, entry)])
 
 
-class TemplateStatusSensor(CoordinatorEntity[TemplateCoordinator], BinarySensorEntity):
+class TemplateStatusSensor(CoordinatorEntity[RequestarrCoordinator], BinarySensorEntity):
     """Binary sensor indicating service connectivity."""
 
     _attr_has_entity_name = True
@@ -36,7 +36,7 @@ class TemplateStatusSensor(CoordinatorEntity[TemplateCoordinator], BinarySensorE
 
     def __init__(
         self,
-        coordinator: TemplateCoordinator,
+        coordinator: RequestarrCoordinator,
         entry: RequestarrConfigEntry,
     ) -> None:
         """Initialize the binary sensor."""

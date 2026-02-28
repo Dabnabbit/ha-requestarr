@@ -4,35 +4,24 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
-from custom_components.requestarr.const import DOMAIN
+from custom_components.requestarr.api import ArrClient
 
 
-async def test_query_service(hass: HomeAssistant) -> None:
-    """Test the query service returns coordinator data."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={CONF_HOST: "192.168.1.100", CONF_PORT: 8080, CONF_API_KEY: "test-key"},
-    )
-    entry.add_to_hass(hass)
+async def test_query_service(hass: HomeAssistant, radarr_entry) -> None:
+    """Test the query service returns coordinator data plus query."""
+    radarr_entry.add_to_hass(hass)
 
-    mock_data = {"sensor_value": 42, "status": "ok"}
-
-    with patch(
-        "custom_components.requestarr.coordinator.ApiClient.async_get_data",
-        new_callable=AsyncMock,
-        return_value=mock_data,
+    with patch.object(
+        ArrClient, "async_get_library_count", new_callable=AsyncMock, return_value=10
     ):
-        assert await hass.config_entries.async_setup(entry.entry_id)
+        assert await hass.config_entries.async_setup(radarr_entry.entry_id)
         await hass.async_block_till_done()
 
     result = await hass.services.async_call(
-        DOMAIN,
+        "requestarr",
         "query",
         {"query": "test"},
         blocking=True,
@@ -45,14 +34,13 @@ async def test_query_service(hass: HomeAssistant) -> None:
 
 async def test_query_service_no_entry(hass: HomeAssistant) -> None:
     """Test the query service raises when no config entry exists."""
-    # Register services without a config entry
     from custom_components.requestarr.services import async_register_services
 
     async_register_services(hass)
 
     with pytest.raises(ServiceValidationError):
         await hass.services.async_call(
-            DOMAIN,
+            "requestarr",
             "query",
             {"query": "test"},
             blocking=True,
