@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.4.0";
+const CARD_VERSION = "0.5.0";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -52,7 +52,7 @@ class RequestarrCard extends LitElement {
   }
 
   static getStubConfig() {
-    return { header: "Requestarr" };
+    return { header: "Requestarr", show_radarr: true, show_sonarr: true, show_lidarr: true };
   }
 
   setConfig(config) {
@@ -136,9 +136,8 @@ class RequestarrCard extends LitElement {
         : String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
     const reqState = this._requesting[key];
     if (reqState === "requested") return "requested";
-    if (!item.in_library) return "not_in_library";
-    if (item.has_file) return "available";
-    return "monitored";
+    if (item.in_library) return "in_library";
+    return "not_in_library";
   }
 
   async _doRequest(item) {
@@ -237,10 +236,13 @@ class RequestarrCard extends LitElement {
           >
             ${initial}
           </div>
+          ${item.in_library
+            ? html`<span class="badge-in-library">In Library</span>`
+            : ""}
         </div>
         <div class="result-info">
           <span class="result-title">${item.title}</span>
-          ${this._renderStatus(state, item)}
+          ${this._renderStatus(state, key, item)}
           ${reqErr
             ? html`<span class="req-error">${reqErr}</span>`
             : ""}
@@ -350,13 +352,16 @@ class RequestarrCard extends LitElement {
               />`
             : ""}
           <div class="poster-placeholder"></div>
+          ${item.in_library
+            ? html`<span class="badge-in-library">In Library</span>`
+            : ""}
         </div>
         <div class="result-info">
           <span class="result-title">${item.title}</span>
           ${item.year
             ? html`<span class="result-year">${item.year}</span>`
             : ""}
-          ${this._renderStatus(state, item)}
+          ${this._renderStatus(state, key, item)}
           ${reqErr
             ? html`<span class="req-error">${reqErr}</span>`
             : ""}
@@ -365,14 +370,11 @@ class RequestarrCard extends LitElement {
     `;
   }
 
-  _renderStatus(state, item) {
-    const key = String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
+  _renderStatus(state, key, item) {
     const isRequesting = this._requesting[key] === "requesting";
     switch (state) {
-      case "available":
-        return html`<span class="badge badge-available">Available</span>`;
-      case "monitored":
-        return html`<span class="badge badge-monitored">Monitored</span>`;
+      case "in_library":
+        return html`<button class="req-btn req-btn-in-library" disabled>In Library</button>`;
       case "requested":
         return html`<span class="badge badge-requested">Requested</span>`;
       case "not_in_library":
@@ -581,12 +583,6 @@ class RequestarrCard extends LitElement {
         color: white;
         align-self: flex-start;
       }
-      .badge-available {
-        background: var(--success-color, #4caf50);
-      }
-      .badge-monitored {
-        background: var(--info-color, var(--primary-color, #2196f3));
-      }
       .badge-requested {
         background: var(--warning-color, #ff9800);
       }
@@ -708,6 +704,31 @@ class RequestarrCard extends LitElement {
         display: flex;
         justify-content: center;
         padding: 32px 16px;
+      }
+
+      /* In Library badge overlay on poster/avatar */
+      .badge-in-library {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #4caf50;
+        color: white;
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-align: center;
+        padding: 2px 0;
+        letter-spacing: 0.03em;
+      }
+
+      /* Disabled "In Library" button state */
+      .req-btn-in-library {
+        background: #9e9e9e;
+        color: white;
+        cursor: default;
+      }
+      .req-btn-in-library:hover {
+        filter: none;
       }
     `;
   }
