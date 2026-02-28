@@ -734,20 +734,118 @@ class RequestarrCard extends LitElement {
   }
 }
 
-/**
- * Card Editor — minimal stub; full editor added in Phase 5.
- */
 class RequestarrCardEditor extends LitElement {
   static get properties() {
     return { hass: {}, config: {} };
   }
 
   setConfig(config) {
-    this.config = config;
+    this.config = { header: "Requestarr", ...config };
+  }
+
+  _isServiceConfigured(service) {
+    if (!this.hass) return false;
+    return Object.keys(this.hass.states).some((k) =>
+      k.startsWith(`sensor.requestarr_${service}`)
+    );
+  }
+
+  _fireConfigChanged(newConfig) {
+    const ev = new Event("config-changed", { bubbles: true, composed: true });
+    ev.detail = { config: newConfig };
+    this.dispatchEvent(ev);
+  }
+
+  _onToggle(ev) {
+    const key = ev.target.dataset.configKey;
+    const newConfig = { ...this.config, [key]: ev.target.checked };
+    this._fireConfigChanged(newConfig);
+  }
+
+  _onTitleInput(ev) {
+    const newConfig = { ...this.config, header: ev.target.value };
+    this._fireConfigChanged(newConfig);
   }
 
   render() {
-    return html``;
+    if (!this.config || !this.hass) return html``;
+    const services = [
+      { id: "radarr", label: "Show Radarr tab", key: "show_radarr" },
+      { id: "sonarr", label: "Show Sonarr tab", key: "show_sonarr" },
+      { id: "lidarr", label: "Show Lidarr tab", key: "show_lidarr" },
+    ];
+    const configuredServices = services.filter((s) =>
+      this._isServiceConfigured(s.id)
+    );
+    return html`
+      <div class="editor">
+        <div class="editor-row">
+          <label class="editor-label">Card Title</label>
+          <input
+            class="editor-input"
+            type="text"
+            .value="${this.config.header || "Requestarr"}"
+            @input="${this._onTitleInput}"
+          />
+        </div>
+        ${configuredServices.map(
+          (s) => html`
+            <div class="editor-row editor-row-toggle">
+              <label>
+                <input
+                  type="checkbox"
+                  data-config-key="${s.key}"
+                  .checked="${this.config[s.key] !== false}"
+                  @change="${this._onToggle}"
+                />
+                ${s.label}
+              </label>
+            </div>
+          `
+        )}
+        ${configuredServices.length === 0
+          ? html`<div class="editor-hint">No arr services configured yet. Add the Requestarr integration first.</div>`
+          : ""}
+      </div>
+    `;
+  }
+
+  static get styles() {
+    return css`
+      .editor {
+        padding: 8px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .editor-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .editor-row-toggle {
+        flex-direction: row;
+        align-items: center;
+      }
+      .editor-label {
+        font-size: 0.85rem;
+        color: var(--secondary-text-color);
+        font-weight: 500;
+      }
+      .editor-input {
+        padding: 6px 10px;
+        border: 1px solid var(--divider-color);
+        border-radius: 6px;
+        background: var(--secondary-background-color);
+        color: var(--primary-text-color);
+        font-size: 0.9rem;
+      }
+      .editor-hint {
+        font-size: 0.8rem;
+        color: var(--secondary-text-color);
+        font-style: italic;
+      }
+    `;
   }
 }
 
