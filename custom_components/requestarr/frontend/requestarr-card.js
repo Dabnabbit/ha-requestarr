@@ -58,6 +58,10 @@ class RequestarrCard extends LitElement {
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
     this.config = { header: "Requestarr", ...config };
+    const tabMap = { movies: "show_radarr", tv: "show_sonarr", music: "show_lidarr" };
+    if (this._activeTab && this.config[tabMap[this._activeTab]] === false) {
+      this._activeTab = this._firstVisibleTab() || "movies";
+    }
   }
 
   getCardSize() {
@@ -273,27 +277,42 @@ class RequestarrCard extends LitElement {
     `;
   }
 
+  _firstVisibleTab() {
+    if (this.config.show_radarr !== false) return "movies";
+    if (this.config.show_sonarr !== false) return "tv";
+    if (this.config.show_lidarr !== false) return "music";
+    return null;
+  }
+
   _renderTabs() {
+    const showMovies = this.config.show_radarr !== false;
+    const showTV = this.config.show_sonarr !== false;
+    const showMusic = this.config.show_lidarr !== false;
+
+    if (!showMovies && !showTV && !showMusic) {
+      return html`<div class="tabs"><span class="tab">No services enabled</span></div>`;
+    }
+
     return html`
       <div class="tabs">
-        <button
+        ${showMovies ? html`<button
           class="tab ${this._activeTab === "movies" ? "active" : ""}"
           @click="${() => this._switchTab("movies")}"
         >
           Movies
-        </button>
-        <button
+        </button>` : ""}
+        ${showTV ? html`<button
           class="tab ${this._activeTab === "tv" ? "active" : ""}"
           @click="${() => this._switchTab("tv")}"
         >
           TV
-        </button>
-        <button
+        </button>` : ""}
+        ${showMusic ? html`<button
           class="tab ${this._activeTab === "music" ? "active" : ""}"
           @click="${() => this._switchTab("music")}"
         >
           Music
-        </button>
+        </button>` : ""}
       </div>
     `;
   }
