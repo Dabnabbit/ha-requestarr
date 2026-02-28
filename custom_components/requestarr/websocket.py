@@ -12,6 +12,8 @@ from homeassistant.core import HomeAssistant, callback
 
 from .api import CannotConnectError, InvalidAuthError, ServerError
 from .const import (
+    CONF_LIDARR_METADATA_PROFILE_ID,
+    CONF_LIDARR_METADATA_PROFILES,
     CONF_LIDARR_QUALITY_PROFILE_ID,
     CONF_LIDARR_ROOT_FOLDER,
     CONF_LIDARR_PROFILES,
@@ -29,6 +31,7 @@ from .const import (
     SERVICE_LIDARR,
     SERVICE_RADARR,
     SERVICE_SONARR,
+    WS_TYPE_REQUEST_ARTIST,
     WS_TYPE_REQUEST_MOVIE,
     WS_TYPE_REQUEST_TV,
     WS_TYPE_SEARCH_MOVIES,
@@ -180,6 +183,10 @@ def _normalize_music_result(
         "quality_profile": _resolve_profile_name(
             config_data.get(CONF_LIDARR_PROFILES, []),
             config_data.get(CONF_LIDARR_QUALITY_PROFILE_ID),
+        ),
+        "metadata_profile": _resolve_profile_name(
+            config_data.get(CONF_LIDARR_METADATA_PROFILES, []),
+            config_data.get(CONF_LIDARR_METADATA_PROFILE_ID),
         ),
         "root_folder": config_data.get(CONF_LIDARR_ROOT_FOLDER, ""),
     }
@@ -518,6 +525,91 @@ async def websocket_request_series(
         )
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_REQUEST_ARTIST,
+        vol.Required("foreign_artist_id"): str,   # MusicBrainz UUID string
+        vol.Required("title"): str,               # artist name (for logging)
+    }
+)
+@websocket_api.async_response
+async def websocket_request_artist(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Handle music artist request via Lidarr POST."""
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "not_configured",
+                "message": "Requestarr not configured",
+            },
+        )
+        return
+
+    client = coordinator.get_client(SERVICE_LIDARR)
+    if client is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "service_not_configured",
+                "message": "Lidarr is not configured",
+            },
+        )
+        return
+
+    config_data = _get_config_data(hass)
+    quality_profile_id = config_data.get(CONF_LIDARR_QUALITY_PROFILE_ID)
+    metadata_profile_id = config_data.get(CONF_LIDARR_METADATA_PROFILE_ID)
+    root_folder = config_data.get(CONF_LIDARR_ROOT_FOLDER, "")
+
+    try:
+        await client.async_request_artist(
+            foreign_artist_id=msg["foreign_artist_id"],
+            quality_profile_id=quality_profile_id,
+            metadata_profile_id=metadata_profile_id,
+            root_folder_path=root_folder,
+        )
+        connection.send_result(msg["id"], {"success": True})
+    except ServerError as err:
+        err_str = str(err)
+        # Lidarr 400 on the add endpoint means the artist is already in the library
+        if "400" in err_str:
+            connection.send_result(
+                msg["id"],
+                {
+                    "success": False,
+                    "error_code": "already_exists",
+                    "message": "This artist is already in Lidarr",
+                },
+            )
+        else:
+            _LOGGER.warning("Artist request failed: %s", err)
+            connection.send_result(
+                msg["id"],
+                {
+                    "success": False,
+                    "error_code": "service_unavailable",
+                    "message": str(err),
+                },
+            )
+    except (CannotConnectError, InvalidAuthError) as err:
+        _LOGGER.warning("Artist request failed: %s", err)
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "service_unavailable",
+                "message": str(err),
+            },
+        )
+
+
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
@@ -532,3 +624,4 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_search_music)
     websocket_api.async_register_command(hass, websocket_request_movie)
     websocket_api.async_register_command(hass, websocket_request_series)
+    websocket_api.async_register_command(hass, websocket_request_artist)
