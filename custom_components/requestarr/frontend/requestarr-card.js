@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.6.5";
+const CARD_VERSION = "0.6.6";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -31,6 +31,7 @@ class RequestarrCard extends LitElement {
       _dialogItem: { type: Object },
       _requesting: { type: Object },
       _requestError: { type: Object },
+      _requestNote: { type: Object },
       _expandedRows: { type: Object },
       _albumCache: { type: Object },
       _albumLoading: { type: Object },
@@ -46,6 +47,7 @@ class RequestarrCard extends LitElement {
     this._dialogItem = null;
     this._requesting = {};
     this._requestError = {};
+    this._requestNote = {};
     this._expandedRows = {};
     this._albumCache = {};
     this._albumLoading = {};
@@ -219,8 +221,9 @@ class RequestarrCard extends LitElement {
       if (resp.success) {
         this._requesting = { ...this._requesting, [key]: "requested" };
       } else if (resp.error_code === "already_exists") {
-        // Already in the arr library — flip to in_library state silently
         this._requesting = { ...this._requesting, [key]: "in_library" };
+        const svc = this._activeTab === "movies" ? "Radarr" : this._activeTab === "tv" ? "Sonarr" : "Lidarr";
+        this._requestNote = { ...this._requestNote, [key]: `Already in ${svc} — check monitoring settings` };
       } else {
         this._requesting = { ...this._requesting, [key]: "error" };
         this._requestError = {
@@ -259,6 +262,7 @@ class RequestarrCard extends LitElement {
         this._requesting = { ...this._requesting, [reqKey]: "requested" };
       } else if (resp.error_code === "already_exists") {
         this._requesting = { ...this._requesting, [reqKey]: "in_library" };
+        this._requestNote = { ...this._requestNote, [reqKey]: "Already in Sonarr — check monitoring" };
       } else {
         this._requesting = { ...this._requesting, [reqKey]: "error" };
         this._requestError = {
@@ -286,6 +290,7 @@ class RequestarrCard extends LitElement {
         this._requesting = { ...this._requesting, [reqKey]: "requested" };
       } else if (resp.error_code === "already_exists") {
         this._requesting = { ...this._requesting, [reqKey]: "in_library" };
+        this._requestNote = { ...this._requestNote, [reqKey]: "Already in Lidarr — check monitoring" };
       } else {
         this._requesting = { ...this._requesting, [reqKey]: "error" };
         this._requestError = {
@@ -579,9 +584,8 @@ class RequestarrCard extends LitElement {
                   </button>`
                 : ""}
             </div>
-            ${reqErr
-              ? html`<span class="req-error">${reqErr}</span>`
-              : ""}
+            ${reqErr ? html`<span class="req-error">${reqErr}</span>` : ""}
+            ${this._requestNote[key] ? html`<span class="req-note">${this._requestNote[key]}</span>` : ""}
           </div>
         </div>
         ${expanded ? this._renderSeasonSubRows(item) : ""}
@@ -642,9 +646,8 @@ class RequestarrCard extends LitElement {
                   </button>`
                 : ""}
             </div>
-            ${reqErr
-              ? html`<span class="req-error">${reqErr}</span>`
-              : ""}
+            ${reqErr ? html`<span class="req-error">${reqErr}</span>` : ""}
+            ${this._requestNote[key] ? html`<span class="req-note">${this._requestNote[key]}</span>` : ""}
           </div>
         </div>
         ${expanded ? this._renderAlbumSubRows(item) : ""}
@@ -987,6 +990,11 @@ class RequestarrCard extends LitElement {
       .req-error {
         color: var(--error-color, #f44336);
         font-size: 0.8rem;
+      }
+      .req-note {
+        color: var(--secondary-text-color);
+        font-size: 0.75rem;
+        font-style: italic;
       }
 
       /* Status badges */
