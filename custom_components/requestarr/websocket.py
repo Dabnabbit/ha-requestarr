@@ -31,6 +31,7 @@ from .const import (
     SERVICE_LIDARR,
     SERVICE_RADARR,
     SERVICE_SONARR,
+    WS_TYPE_GET_SERIES_SEASONS,
     WS_TYPE_GET_ARTIST_ALBUMS,
     WS_TYPE_REQUEST_ALBUM,
     WS_TYPE_REQUEST_ARTIST,
@@ -614,6 +615,37 @@ async def websocket_request_artist(
 
 @websocket_api.websocket_command(
     {
+        vol.Required("type"): WS_TYPE_GET_SERIES_SEASONS,
+        vol.Required("arr_id"): int,
+    }
+)
+@websocket_api.async_response
+async def websocket_get_series_seasons(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Handle get_series_seasons — fetch accurate season data from Sonarr library."""
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Requestarr not configured")
+        return
+
+    client = coordinator.get_client(SERVICE_SONARR)
+    if client is None:
+        connection.send_error(msg["id"], "not_found", "Sonarr is not configured")
+        return
+
+    try:
+        seasons = await client.async_get_series_seasons(arr_id=msg["arr_id"])
+        connection.send_result(msg["id"], {"seasons": seasons})
+    except (CannotConnectError, InvalidAuthError, ServerError) as err:
+        _LOGGER.warning("get_series_seasons failed: %s", err)
+        connection.send_result(msg["id"], {"seasons": [], "error": str(err)})
+
+
+@websocket_api.websocket_command(
+    {
         vol.Required("type"): WS_TYPE_GET_ARTIST_ALBUMS,
         vol.Required("foreign_artist_id"): str,
         vol.Optional("arr_id"): int,
@@ -747,5 +779,6 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_request_movie)
     websocket_api.async_register_command(hass, websocket_request_series)
     websocket_api.async_register_command(hass, websocket_request_artist)
+    websocket_api.async_register_command(hass, websocket_get_series_seasons)
     websocket_api.async_register_command(hass, websocket_get_artist_albums)
     websocket_api.async_register_command(hass, websocket_request_album)

@@ -305,6 +305,24 @@ class ArrClient:
         }
         return await self._request("POST", "/artist", json=payload)
 
+    async def async_get_series_seasons(self, arr_id: int) -> list[dict[str, Any]]:
+        """Fetch accurate season data for an in-library series from Sonarr.
+
+        The lookup endpoint (/series/lookup) does not reliably include season
+        statistics such as episodeFileCount. This method calls /series/{arr_id}
+        directly to get the full library entry with accurate per-season stats.
+
+        Args:
+            arr_id: Sonarr internal series ID (from lookup result id field).
+
+        Returns:
+            List of season dicts including statistics.episodeFileCount.
+        """
+        result = await self._request("GET", f"/series/{arr_id}")
+        if isinstance(result, dict):
+            return result.get("seasons", [])
+        return []
+
     async def async_get_artist_albums(
         self, foreign_artist_id: str, arr_id: int | None = None
     ) -> list[dict[str, Any]]:

@@ -71,6 +71,7 @@ WS_TYPE_SEARCH_MUSIC = f"{DOMAIN}/search_music"
 WS_TYPE_REQUEST_MOVIE = f"{DOMAIN}/request_movie"
 WS_TYPE_REQUEST_TV = f"{DOMAIN}/request_series"
 WS_TYPE_REQUEST_ARTIST = f"{DOMAIN}/request_artist"
+WS_TYPE_GET_SERIES_SEASONS = f"{DOMAIN}/get_series_seasons"
 WS_TYPE_GET_ARTIST_ALBUMS = f"{DOMAIN}/get_artist_albums"
 WS_TYPE_REQUEST_ALBUM = f"{DOMAIN}/request_album"
 
