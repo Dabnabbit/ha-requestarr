@@ -109,9 +109,11 @@ Plans:
   3. All tests pass, hassfest + hacs/action CI passes
   4. README documents installation, config flow, card usage
 
+**Plans:** 2 plans
+
 Plans:
-- [ ] 05-01: Implement library state detection and "In Library" badges
-- [ ] 05-02: Build card editor, update tests, validate CI
+- [ ] 05-01-PLAN.md — In Library badges and card editor (requestarr-card.js)
+- [ ] 05-02-PLAN.md — Test suite rewrite and README documentation
 
 ## Progress
 
@@ -122,6 +124,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Config Flow + API Clients | 1/1 | Complete | 2026-02-25 |
 | 2. Sensors + Search | 1/1 | Complete | 2026-02-27 |
-| 3. Movie & TV Request | 0/2 | Not started | - |
-| 4. Music + Lidarr Request | 0/1 | Not started | - |
+| 3. Movie & TV Request | 2/2 | Complete | 2026-02-27 |
+| 4. Music + Lidarr Request | 1/1 | Complete | 2026-02-27 |
 | 5. Library State + Card Polish + Validation | 0/2 | Not started | - |
