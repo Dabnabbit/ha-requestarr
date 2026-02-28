@@ -474,7 +474,7 @@ async def websocket_request_movie(
     except ServerError as err:
         err_str = str(err)
         # Radarr 400 on the add endpoint means the movie is already in the library
-        if "400" in err_str and "already" in err_str.lower():
+        if "400" in err_str and "already been added" in err_str.lower():
             connection.send_result(
                 msg["id"],
                 {
@@ -562,7 +562,7 @@ async def websocket_request_series(
     except ServerError as err:
         err_str = str(err)
         # Sonarr 400 on the add endpoint means the series is already in the library
-        if "400" in err_str and "already" in err_str.lower():
+        if "400" in err_str and "already been added" in err_str.lower():
             connection.send_result(
                 msg["id"],
                 {
@@ -647,7 +647,7 @@ async def websocket_request_artist(
     except ServerError as err:
         err_str = str(err)
         # Lidarr 400 on the add endpoint means the artist is already in the library
-        if "400" in err_str and "already" in err_str.lower():
+        if "400" in err_str and "already been added" in err_str.lower():
             connection.send_result(
                 msg["id"],
                 {
@@ -798,7 +798,7 @@ async def websocket_request_album(
         connection.send_result(msg["id"], {"success": True})
     except ServerError as err:
         err_str = str(err)
-        if "400" in err_str and "already" in err_str.lower():
+        if "400" in err_str and "already been added" in err_str.lower():
             connection.send_result(
                 msg["id"],
                 {
