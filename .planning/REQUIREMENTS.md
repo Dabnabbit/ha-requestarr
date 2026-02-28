@@ -43,7 +43,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **REQT-02**: User can request a TV series to Sonarr with one click (POST `/api/v3/series` with tvdbId already in lookup response — no TMDB translation needed)
 - [ ] **REQT-03**: User can request a music artist to Lidarr with one click (POST `/api/v1/artist` with foreignArtistId from lookup)
 - [ ] **REQT-04**: Request uses quality profile and root folder from config (not hardcoded)
-- [ ] **REQT-05**: "Already in library" indicator from arr lookup response (id > 0 means in library)
+- [x] **REQT-05**: "Already in library" indicator from arr lookup response (id > 0 means in library)
 
 ### Card UI
 
@@ -51,7 +51,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **CARD-02**: Search input with 300ms debounce (Jellyseerr pattern)
 - [ ] **CARD-03**: Search results: poster-centric list for Movies/TV (2:3 rectangle), text-centric list with circular avatars for Music
 - [ ] **CARD-04**: Request button on each result with visual feedback — green/blue/yellow/red status badge system (Jellyseerr pattern)
-- [ ] **CARD-05**: Visual card editor for configuration
+- [x] **CARD-05**: Visual card editor for configuration
 
 ### Distribution (Satisfied by Template)
 
@@ -117,12 +117,12 @@ Deferred to future release. Tracked but not in current roadmap.
 | REQT-02 | Phase 3 | Pending |
 | REQT-03 | Phase 4 | Pending |
 | REQT-04 | Phase 3 | Pending |
-| REQT-05 | Phase 5 | Pending |
+| REQT-05 | Phase 5 | Complete |
 | CARD-01 | Phase 3 | Pending |
 | CARD-02 | Phase 3 | Pending |
 | CARD-03 | Phase 3 | Pending |
 | CARD-04 | Phase 3 | Pending |
-| CARD-05 | Phase 5 | Pending |
+| CARD-05 | Phase 5 | Complete |
 | DIST-01 | Template | **Done** |
 | DIST-02 | Template | **Done** |
 | DIST-03 | Phase 5 | Pending |
