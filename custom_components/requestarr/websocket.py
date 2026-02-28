@@ -31,6 +31,8 @@ from .const import (
     SERVICE_LIDARR,
     SERVICE_RADARR,
     SERVICE_SONARR,
+    WS_TYPE_GET_ARTIST_ALBUMS,
+    WS_TYPE_REQUEST_ALBUM,
     WS_TYPE_REQUEST_ARTIST,
     WS_TYPE_REQUEST_MOVIE,
     WS_TYPE_REQUEST_TV,
@@ -610,6 +612,126 @@ async def websocket_request_artist(
         )
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_GET_ARTIST_ALBUMS,
+        vol.Required("foreign_artist_id"): str,
+        vol.Optional("arr_id"): int,
+    }
+)
+@websocket_api.async_response
+async def websocket_get_artist_albums(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Handle get_artist_albums WebSocket command — fetch Lidarr album list."""
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Requestarr not configured")
+        return
+
+    client = coordinator.get_client(SERVICE_LIDARR)
+    if client is None:
+        connection.send_error(msg["id"], "not_found", "Lidarr is not configured")
+        return
+
+    try:
+        albums = await client.async_get_artist_albums(
+            foreign_artist_id=msg["foreign_artist_id"],
+            arr_id=msg.get("arr_id"),
+        )
+        connection.send_result(msg["id"], {"albums": albums})
+    except (CannotConnectError, InvalidAuthError, ServerError) as err:
+        _LOGGER.warning("get_artist_albums failed: %s", err)
+        connection.send_result(msg["id"], {"albums": [], "error": str(err)})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_REQUEST_ALBUM,
+        vol.Required("foreign_artist_id"): str,
+        vol.Required("foreign_album_id"): str,
+    }
+)
+@websocket_api.async_response
+async def websocket_request_album(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Handle single album request via Lidarr POST."""
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "not_configured",
+                "message": "Requestarr not configured",
+            },
+        )
+        return
+
+    client = coordinator.get_client(SERVICE_LIDARR)
+    if client is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "service_not_configured",
+                "message": "Lidarr is not configured",
+            },
+        )
+        return
+
+    config_data = _get_config_data(hass)
+    quality_profile_id = config_data.get(CONF_LIDARR_QUALITY_PROFILE_ID)
+    metadata_profile_id = config_data.get(CONF_LIDARR_METADATA_PROFILE_ID)
+    root_folder = config_data.get(CONF_LIDARR_ROOT_FOLDER, "")
+
+    try:
+        await client.async_request_album(
+            foreign_artist_id=msg["foreign_artist_id"],
+            foreign_album_id=msg["foreign_album_id"],
+            quality_profile_id=quality_profile_id,
+            metadata_profile_id=metadata_profile_id,
+            root_folder_path=root_folder,
+        )
+        connection.send_result(msg["id"], {"success": True})
+    except ServerError as err:
+        err_str = str(err)
+        if "400" in err_str:
+            connection.send_result(
+                msg["id"],
+                {
+                    "success": False,
+                    "error_code": "already_exists",
+                    "message": "This artist is already in Lidarr",
+                },
+            )
+        else:
+            _LOGGER.warning("Album request failed: %s", err)
+            connection.send_result(
+                msg["id"],
+                {
+                    "success": False,
+                    "error_code": "service_unavailable",
+                    "message": str(err),
+                },
+            )
+    except (CannotConnectError, InvalidAuthError) as err:
+        _LOGGER.warning("Album request failed: %s", err)
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "service_unavailable",
+                "message": str(err),
+            },
+        )
+
+
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
@@ -625,3 +747,5 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_request_movie)
     websocket_api.async_register_command(hass, websocket_request_series)
     websocket_api.async_register_command(hass, websocket_request_artist)
+    websocket_api.async_register_command(hass, websocket_get_artist_albums)
+    websocket_api.async_register_command(hass, websocket_request_album)

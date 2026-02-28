@@ -248,6 +248,7 @@ class ArrClient:
             InvalidAuthError: API key rejected.
             ServerError: Non-auth HTTP error. HTTP 400 means series already exists.
         """
+        all_monitored = all(s.get("monitored", True) for s in seasons)
         payload = {
             "tvdbId": tvdb_id,
             "title": title,
@@ -258,12 +259,12 @@ class ArrClient:
             "seasonFolder": True,
             "seriesType": "standard",
             "seasons": [
-                {"seasonNumber": s.get("seasonNumber", 0), "monitored": True}
+                {"seasonNumber": s.get("seasonNumber", 0), "monitored": s.get("monitored", True)}
                 for s in seasons
             ],
             "addOptions": {
                 "searchForMissingEpisodes": True,
-                "monitor": "all",
+                "monitor": "all" if all_monitored else "none",
             },
         }
         return await self._request("POST", "/series", json=payload)
@@ -301,6 +302,89 @@ class ArrClient:
                 "searchForMissingAlbums": True,
                 "monitor": "all",
             },
+        }
+        return await self._request("POST", "/artist", json=payload)
+
+    async def async_get_artist_albums(
+        self, foreign_artist_id: str, arr_id: int | None = None
+    ) -> list[dict[str, Any]]:
+        """Fetch albums for an artist from Lidarr.
+
+        Args:
+            foreign_artist_id: MusicBrainz artist GUID.
+            arr_id: Lidarr internal artist ID if artist is already in library.
+                    When set, uses /album endpoint (returns actual library state).
+                    When None, uses /album/lookup (returns all known albums, id=0).
+
+        Returns:
+            List of album dicts with title, year, foreign_album_id, monitored, in_library.
+        """
+        if arr_id:
+            items = await self._request("GET", "/album", params={"artistId": arr_id})
+        else:
+            items = await self._request(
+                "GET", "/album/lookup", params={"term": f"lidarr:{foreign_artist_id}"}
+            )
+        return [
+            {
+                "title": item.get("title", ""),
+                "year": item.get("releaseDate", "")[:4] if item.get("releaseDate") else None,
+                "foreign_album_id": item.get("foreignAlbumId") or item.get("foreignId"),
+                "monitored": item.get("monitored", False),
+                "in_library": item.get("id", 0) > 0,
+            }
+            for item in (items if isinstance(items, list) else [])
+            if item.get("foreignAlbumId") or item.get("foreignId")
+        ]
+
+    async def async_request_album(
+        self,
+        foreign_artist_id: str,
+        foreign_album_id: str,
+        quality_profile_id: int,
+        metadata_profile_id: int,
+        root_folder_path: str,
+    ) -> dict[str, Any]:
+        """Add an artist to Lidarr with only the target album monitored.
+
+        Fetches the full album list via lookup, sets the target album to
+        monitored=True and all others to False, then POSTs the artist with
+        addOptions.monitor="none" so Lidarr respects the per-album flags.
+
+        Args:
+            foreign_artist_id: MusicBrainz artist GUID.
+            foreign_album_id: MusicBrainz album GUID.
+            quality_profile_id: Quality profile ID from config entry.
+            metadata_profile_id: Metadata profile ID from config entry.
+            root_folder_path: Root folder path from config entry.
+
+        Returns:
+            Parsed JSON response from Lidarr.
+
+        Raises:
+            CannotConnectError: Cannot reach Lidarr.
+            InvalidAuthError: API key rejected.
+            ServerError: Non-auth HTTP error. HTTP 400 means artist already exists.
+        """
+        all_albums = await self._request(
+            "GET", "/album/lookup", params={"term": f"lidarr:{foreign_artist_id}"}
+        )
+        album_list = [
+            {
+                "foreignAlbumId": a.get("foreignAlbumId") or a.get("foreignId"),
+                "monitored": (a.get("foreignAlbumId") or a.get("foreignId")) == foreign_album_id,
+            }
+            for a in (all_albums if isinstance(all_albums, list) else [])
+            if a.get("foreignAlbumId") or a.get("foreignId")
+        ]
+        payload = {
+            "foreignArtistId": foreign_artist_id,
+            "qualityProfileId": int(quality_profile_id),
+            "metadataProfileId": int(metadata_profile_id),
+            "rootFolderPath": root_folder_path,
+            "monitored": True,
+            "addOptions": {"monitor": "none", "searchForMissingAlbums": True},
+            "albums": album_list,
         }
         return await self._request("POST", "/artist", json=payload)
 

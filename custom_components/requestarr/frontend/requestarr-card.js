@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.5.0";
+const CARD_VERSION = "0.6.0";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -31,6 +31,9 @@ class RequestarrCard extends LitElement {
       _dialogItem: { type: Object },
       _requesting: { type: Object },
       _requestError: { type: Object },
+      _expandedRows: { type: Object },
+      _albumCache: { type: Object },
+      _albumLoading: { type: Object },
     };
   }
 
@@ -43,6 +46,9 @@ class RequestarrCard extends LitElement {
     this._dialogItem = null;
     this._requesting = {};
     this._requestError = {};
+    this._expandedRows = {};
+    this._albumCache = {};
+    this._albumLoading = {};
     this._debounceTimer = null;
     this._searchSeq = 0;
   }
@@ -70,9 +76,9 @@ class RequestarrCard extends LitElement {
 
   getGridOptions() {
     return {
-      rows: 3,
+      rows: 8,
       columns: 6,
-      min_rows: 2,
+      min_rows: 4,
       min_columns: 3,
     };
   }
@@ -121,11 +127,41 @@ class RequestarrCard extends LitElement {
       });
       if (seq !== this._searchSeq) return;
       this._results = resp.results || [];
+      // Reset expand state for fresh results
+      this._expandedRows = {};
+      this._albumCache = {};
+      this._albumLoading = {};
     } catch (_err) {
       if (seq !== this._searchSeq) return;
       this._results = [];
     } finally {
       if (seq === this._searchSeq) this._loading = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Expand / collapse
+  // ---------------------------------------------------------------------------
+
+  _toggleExpand(key) {
+    this._expandedRows = { ...this._expandedRows, [key]: !this._expandedRows[key] };
+  }
+
+  async _fetchAlbums(item) {
+    const id = item.foreign_artist_id;
+    if (this._albumCache[id] !== undefined) return; // already fetched
+    this._albumLoading = { ...this._albumLoading, [id]: true };
+    try {
+      const resp = await this.hass.connection.sendMessagePromise({
+        type: "requestarr/get_artist_albums",
+        foreign_artist_id: id,
+        ...(item.arr_id ? { arr_id: item.arr_id } : {}),
+      });
+      this._albumCache = { ...this._albumCache, [id]: resp.albums || [] };
+    } catch (_err) {
+      this._albumCache = { ...this._albumCache, [id]: [] };
+    } finally {
+      this._albumLoading = { ...this._albumLoading, [id]: false };
     }
   }
 
@@ -161,15 +197,16 @@ class RequestarrCard extends LitElement {
         title_slug: item.title_slug,
       };
     } else if (this._activeTab === "tv") {
+      // Request All — send every season as monitored: true
       payload = {
         type: "requestarr/request_series",
         tvdb_id: item.tvdb_id,
         title: item.title,
         title_slug: item.title_slug,
-        seasons: item.seasons || [],
+        seasons: (item.seasons || []).map((s) => ({ ...s, monitored: true })),
       };
     } else {
-      // music
+      // music — request all (entire artist)
       payload = {
         type: "requestarr/request_artist",
         foreign_artist_id: item.foreign_artist_id,
@@ -197,6 +234,64 @@ class RequestarrCard extends LitElement {
     }
   }
 
+  async _doRequestSeason(item, season) {
+    const reqKey = `${item.tvdb_id}:s${season.seasonNumber}`;
+    this._requesting = { ...this._requesting, [reqKey]: "requesting" };
+
+    // Only this season monitored; all others false
+    const seasons = (item.seasons || []).map((s) => ({
+      ...s,
+      monitored: s.seasonNumber === season.seasonNumber,
+    }));
+
+    try {
+      const resp = await this.hass.connection.sendMessagePromise({
+        type: "requestarr/request_series",
+        tvdb_id: item.tvdb_id,
+        title: item.title,
+        title_slug: item.title_slug,
+        seasons,
+      });
+      if (resp.success) {
+        this._requesting = { ...this._requesting, [reqKey]: "requested" };
+      } else {
+        this._requesting = { ...this._requesting, [reqKey]: "error" };
+        this._requestError = {
+          ...this._requestError,
+          [reqKey]: resp.message || "Request failed",
+        };
+      }
+    } catch (_err) {
+      this._requesting = { ...this._requesting, [reqKey]: "error" };
+      this._requestError = { ...this._requestError, [reqKey]: "Connection error" };
+    }
+  }
+
+  async _doRequestAlbum(item, album) {
+    const reqKey = `${item.foreign_artist_id}:a${album.foreign_album_id}`;
+    this._requesting = { ...this._requesting, [reqKey]: "requesting" };
+
+    try {
+      const resp = await this.hass.connection.sendMessagePromise({
+        type: "requestarr/request_album",
+        foreign_artist_id: item.foreign_artist_id,
+        foreign_album_id: album.foreign_album_id,
+      });
+      if (resp.success) {
+        this._requesting = { ...this._requesting, [reqKey]: "requested" };
+      } else {
+        this._requesting = { ...this._requesting, [reqKey]: "error" };
+        this._requestError = {
+          ...this._requestError,
+          [reqKey]: resp.message || "Request failed",
+        };
+      }
+    } catch (_err) {
+      this._requesting = { ...this._requesting, [reqKey]: "error" };
+      this._requestError = { ...this._requestError, [reqKey]: "Connection error" };
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Music helpers
   // ---------------------------------------------------------------------------
@@ -215,42 +310,118 @@ class RequestarrCard extends LitElement {
     return palette[h % palette.length];
   }
 
-  _renderMusicResultRow(item) {
-    const key = String(item.foreign_artist_id);
-    const state = this._getItemState(item);
-    const reqErr = this._requestError[key];
-    const initial = item.title ? item.title[0].toUpperCase() : "?";
-    const color = this._hashColor(item.title || "");
+  // ---------------------------------------------------------------------------
+  // Sub-row renderers
+  // ---------------------------------------------------------------------------
+
+  _renderSeasonSubRows(item) {
+    const seasons = [...(item.seasons || [])].sort(
+      (a, b) => a.seasonNumber - b.seasonNumber
+    );
     return html`
-      <div class="result-row music-result-row">
-        <div class="avatar-wrap">
-          ${item.poster_url
-            ? html`<img
-                class="avatar"
-                src="${item.poster_url}"
-                alt=""
-                @error="${(e) => {
-                  e.target.style.display = "none";
-                }}"
-              />`
-            : ""}
-          <div
-            class="avatar-placeholder"
-            style="background-color: ${color}"
-          >
-            ${initial}
+      <div class="sub-rows">
+        ${seasons.map((s) => {
+          const label = s.seasonNumber === 0 ? "Specials" : `Season ${s.seasonNumber}`;
+          const reqKey = `${item.tvdb_id}:s${s.seasonNumber}`;
+          const isInLib = item.in_library && s.monitored === true;
+          const reqState = this._requesting[reqKey];
+          const isRequesting = reqState === "requesting";
+          const isRequested = reqState === "requested";
+          const reqErr = this._requestError[reqKey];
+          const epCount =
+            s.statistics && s.statistics.totalEpisodeCount != null
+              ? s.statistics.totalEpisodeCount
+              : null;
+          return html`
+            <div class="sub-row">
+              <div class="sub-row-left">
+                <span class="sub-row-label">${label}</span>
+                ${epCount != null
+                  ? html`<span class="sub-row-meta">${epCount} ep${epCount !== 1 ? "s" : ""}</span>`
+                  : ""}
+              </div>
+              <div class="sub-row-actions">
+                ${reqErr
+                  ? html`<span class="req-error sub-req-error">${reqErr}</span>`
+                  : ""}
+                ${isInLib
+                  ? html`<button class="req-btn req-btn-in-library req-btn-sm" disabled>
+                      In Library
+                    </button>`
+                  : isRequested
+                  ? html`<span class="badge badge-requested">Requested</span>`
+                  : html`<button
+                      class="req-btn req-btn-sm"
+                      ?disabled="${isRequesting}"
+                      @click="${() => this._doRequestSeason(item, s)}"
+                    >
+                      ${isRequesting ? "Requesting\u2026" : "Request"}
+                    </button>`}
+              </div>
+            </div>
+          `;
+        })}
+      </div>
+    `;
+  }
+
+  _renderAlbumSubRows(item) {
+    const id = item.foreign_artist_id;
+    if (this._albumLoading[id]) {
+      return html`
+        <div class="sub-rows">
+          <div class="sub-row-loading">
+            <ha-spinner size="small"></ha-spinner>
           </div>
-          ${item.in_library
-            ? html`<span class="badge-in-library">In Library</span>`
-            : ""}
         </div>
-        <div class="result-info">
-          <span class="result-title">${item.title}</span>
-          ${this._renderStatus(state, key, item)}
-          ${reqErr
-            ? html`<span class="req-error">${reqErr}</span>`
-            : ""}
+      `;
+    }
+    const albums = this._albumCache[id];
+    if (!albums || albums.length === 0) {
+      return html`
+        <div class="sub-rows">
+          <div class="sub-row-empty">No albums found</div>
         </div>
+      `;
+    }
+    return html`
+      <div class="sub-rows">
+        ${albums.map((album) => {
+          const reqKey = `${id}:a${album.foreign_album_id}`;
+          const isInLib = album.in_library || album.monitored;
+          const reqState = this._requesting[reqKey];
+          const isRequesting = reqState === "requesting";
+          const isRequested = reqState === "requested";
+          const reqErr = this._requestError[reqKey];
+          return html`
+            <div class="sub-row">
+              <div class="sub-row-left">
+                <span class="sub-row-label">${album.title}</span>
+                ${album.year
+                  ? html`<span class="sub-row-meta">${album.year}</span>`
+                  : ""}
+              </div>
+              <div class="sub-row-actions">
+                ${reqErr
+                  ? html`<span class="req-error sub-req-error">${reqErr}</span>`
+                  : ""}
+                ${isInLib
+                  ? html`<button class="req-btn req-btn-in-library req-btn-sm" disabled>
+                      In Library
+                    </button>`
+                  : isRequested
+                  ? html`<span class="badge badge-requested">Requested</span>`
+                  : html`<button
+                      class="req-btn req-btn-sm"
+                      ?disabled="${isRequesting}"
+                      @click="${() => this._doRequestAlbum(item, album)}"
+                    >
+                      ${isRequesting ? "Requesting\u2026" : "Request"}
+                    </button>`}
+              </div>
+            </div>
+          `;
+        })}
       </div>
     `;
   }
@@ -354,42 +525,121 @@ class RequestarrCard extends LitElement {
   }
 
   _renderResultRow(item) {
+    const isTV = this._activeTab === "tv";
     const state = this._getItemState(item);
     const key = String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
     const reqErr = this._requestError[key];
+    const seasonCount = item.seasons ? item.seasons.length : null;
+    const expanded = isTV && !!this._expandedRows[key];
+
     return html`
       <div class="result-row">
-        <div class="poster-wrap">
-          ${item.poster_url
-            ? html`<img
-                class="poster"
-                src="${item.poster_url}"
-                alt=""
-                @error="${(e) => {
-                  e.target.style.display = "none";
-                }}"
-              />`
-            : ""}
-          <div class="poster-placeholder"></div>
-          ${item.in_library
-            ? html`<span class="badge-in-library">In Library</span>`
+        <div class="result-row-main">
+          <div class="poster-wrap">
+            ${item.poster_url
+              ? html`<img
+                  class="poster"
+                  src="${item.poster_url}"
+                  alt=""
+                  @error="${(e) => {
+                    e.target.style.display = "none";
+                  }}"
+                />`
+              : ""}
+            <div class="poster-placeholder"></div>
+            ${item.in_library
+              ? html`<span class="badge-in-library">In Library</span>`
+              : ""}
+          </div>
+          <div class="result-info">
+            <span class="result-title">${item.title}</span>
+            <span class="result-meta">
+              ${item.year ? html`<span class="result-year">${item.year}</span>` : ""}
+              ${seasonCount ? html`<span class="result-seasons">${seasonCount} season${seasonCount !== 1 ? "s" : ""}</span>` : ""}
+            </span>
+            ${item.overview
+              ? html`<span class="result-overview">${item.overview}</span>`
+              : ""}
+            ${this._renderStatus(state, key, item, isTV ? "Request All" : "Request")}
+            ${reqErr
+              ? html`<span class="req-error">${reqErr}</span>`
+              : ""}
+          </div>
+          ${isTV
+            ? html`<button
+                class="expand-btn"
+                @click="${() => this._toggleExpand(key)}"
+                title="${expanded ? "Collapse" : "Expand seasons"}"
+              >
+                ${expanded ? "\u25BC" : "\u25B6"}
+              </button>`
             : ""}
         </div>
-        <div class="result-info">
-          <span class="result-title">${item.title}</span>
-          ${item.year
-            ? html`<span class="result-year">${item.year}</span>`
-            : ""}
-          ${this._renderStatus(state, key, item)}
-          ${reqErr
-            ? html`<span class="req-error">${reqErr}</span>`
-            : ""}
-        </div>
+        ${expanded ? this._renderSeasonSubRows(item) : ""}
       </div>
     `;
   }
 
-  _renderStatus(state, key, item) {
+  _renderMusicResultRow(item) {
+    const key = String(item.foreign_artist_id);
+    const state = this._getItemState(item);
+    const reqErr = this._requestError[key];
+    const initial = item.title ? item.title[0].toUpperCase() : "?";
+    const color = this._hashColor(item.title || "");
+    const expanded = !!this._expandedRows[key];
+
+    return html`
+      <div class="result-row music-result-row">
+        <div class="result-row-main result-row-main-music">
+          <div class="avatar-wrap">
+            ${item.poster_url
+              ? html`<img
+                  class="avatar"
+                  src="${item.poster_url}"
+                  alt=""
+                  @error="${(e) => {
+                    e.target.style.display = "none";
+                  }}"
+                />`
+              : ""}
+            <div
+              class="avatar-placeholder"
+              style="background-color: ${color}"
+            >
+              ${initial}
+            </div>
+            ${item.in_library
+              ? html`<span class="badge-in-library">In Library</span>`
+              : ""}
+          </div>
+          <div class="result-info">
+            <span class="result-title">${item.title}</span>
+            ${item.overview
+              ? html`<span class="result-overview">${item.overview}</span>`
+              : ""}
+            ${this._renderStatus(state, key, item, "Request All")}
+            ${reqErr
+              ? html`<span class="req-error">${reqErr}</span>`
+              : ""}
+          </div>
+          <button
+            class="expand-btn"
+            @click="${() => {
+              const wasExpanded = this._expandedRows[key];
+              this._toggleExpand(key);
+              if (!wasExpanded) this._fetchAlbums(item);
+            }}"
+            title="${expanded ? "Collapse" : "Expand albums"}"
+          >
+            ${expanded ? "\u25BC" : "\u25B6"}
+          </button>
+        </div>
+        ${expanded ? this._renderAlbumSubRows(item) : ""}
+      </div>
+    `;
+  }
+
+  _renderStatus(state, key, item, label = "Request") {
     const isRequesting = this._requesting[key] === "requesting";
     switch (state) {
       case "in_library":
@@ -405,7 +655,7 @@ class RequestarrCard extends LitElement {
             this._dialogItem = item;
           }}"
         >
-          ${isRequesting ? "Requesting\u2026" : "Request"}
+          ${isRequesting ? "Requesting\u2026" : label}
         </button>`;
     }
   }
@@ -463,9 +713,22 @@ class RequestarrCard extends LitElement {
     return css`
       :host {
         display: block;
+        height: 100%;
+        box-sizing: border-box;
+      }
+      ha-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       }
       .card-content {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
         padding: 0 16px 16px;
+        overflow: hidden;
       }
 
       /* Tabs */
@@ -529,31 +792,120 @@ class RequestarrCard extends LitElement {
       .results {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 0;
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--divider-color) transparent;
       }
       .empty {
         color: var(--secondary-text-color);
         padding: 16px 0;
         text-align: center;
       }
+
+      /* Result row — now a column wrapper */
       .result-row {
         display: flex;
-        gap: 12px;
-        align-items: flex-start;
-        padding: 8px 0;
+        flex-direction: column;
+        padding: 10px 0;
         border-bottom: 1px solid var(--divider-color);
       }
       .result-row:last-child {
         border-bottom: none;
       }
 
+      /* Main row — poster + info + optional expand button */
+      .result-row-main {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .result-row-main-music {
+        align-items: center;
+      }
+
+      /* Expand button */
+      .expand-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 6px;
+        color: var(--secondary-text-color);
+        font-size: 0.85rem;
+        flex-shrink: 0;
+        align-self: center;
+      }
+      .expand-btn:hover {
+        color: var(--primary-text-color);
+      }
+
+      /* Sub-rows */
+      .sub-rows {
+        padding: 4px 0 4px 92px; /* indent past poster width (80px) + gap (12px) */
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        border-top: 1px solid var(--divider-color);
+        margin-top: 6px;
+      }
+      .sub-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--divider-color);
+      }
+      .sub-row:last-child {
+        border-bottom: none;
+      }
+      .sub-row-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      .sub-row-label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--primary-text-color);
+      }
+      .sub-row-meta {
+        font-size: 0.75rem;
+        color: var(--secondary-text-color);
+      }
+      .sub-row-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        margin-left: 8px;
+      }
+      .sub-req-error {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sub-row-loading {
+        padding: 8px 0;
+        display: flex;
+        justify-content: flex-start;
+      }
+      .sub-row-empty {
+        padding: 8px 0;
+        font-size: 0.8rem;
+        color: var(--secondary-text-color);
+      }
+
       /* Poster */
       .poster-wrap {
         position: relative;
         flex-shrink: 0;
-        width: 60px;
-        height: 90px;
-        border-radius: 4px;
+        width: 80px;
+        height: 120px;
+        border-radius: 6px;
         overflow: hidden;
         background: var(--secondary-background-color);
       }
@@ -576,16 +928,35 @@ class RequestarrCard extends LitElement {
         flex-direction: column;
         gap: 4px;
         padding-top: 2px;
+        min-width: 0;
       }
       .result-title {
-        font-weight: 500;
+        font-weight: 600;
         color: var(--primary-text-color);
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         line-height: 1.3;
+      }
+      .result-meta {
+        display: flex;
+        gap: 8px;
+        align-items: center;
       }
       .result-year {
         color: var(--secondary-text-color);
         font-size: 0.8rem;
+      }
+      .result-seasons {
+        color: var(--secondary-text-color);
+        font-size: 0.8rem;
+      }
+      .result-overview {
+        color: var(--secondary-text-color);
+        font-size: 0.8rem;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
       .req-error {
         color: var(--error-color, #f44336);
@@ -618,6 +989,11 @@ class RequestarrCard extends LitElement {
         font-weight: 500;
         align-self: flex-start;
       }
+      .req-btn-sm {
+        padding: 3px 10px;
+        font-size: 0.75rem;
+        align-self: auto;
+      }
       .req-btn:disabled {
         opacity: 0.6;
         cursor: default;
@@ -627,14 +1003,11 @@ class RequestarrCard extends LitElement {
       }
 
       /* Music avatar (circular) */
-      .music-result-row {
-        align-items: center;
-      }
       .avatar-wrap {
         position: relative;
         flex-shrink: 0;
-        width: 60px;
-        height: 60px;
+        width: 72px;
+        height: 72px;
         border-radius: 50%;
         overflow: hidden;
         background: var(--secondary-background-color);
