@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Search for media and submit requests to arr stack from a single HA dashboard card — no separate app, no separate auth, no separate container
-**Current focus:** v1 milestone complete. All 5 phases executed and verified.
+**Current focus:** v1 milestone complete. All 5 phases executed, verified, and tech debt resolved.
 
 ## Current Position
 
 Phase: 5 of 5 (Library State + Card Polish + Validation) — COMPLETE
 Plan: All plans complete
-Status: v1 milestone complete — all 5 phases executed and verified
-Last activity: 2026-02-28 — Phase 5 executed: in-library badges, card editor, 18-test suite, README
+Status: v1 milestone complete — all tech debt resolved, audit passed 30/30
+Last activity: 2026-02-28 — Tech debt fixed: show_* toggles wired, iot_class corrected, pytest CI added, binary_sensor removed
 
 Progress: [████████████████████] 5/5 plans (100% of planned phases)
 
@@ -34,17 +34,17 @@ Progress: [████████████████████] 5/5 pla
 The ha-hacs-template v1.0 overlay satisfies:
 
 - **SCAF-01**: Modern `async_register_static_paths` + `StaticPathConfig` (HA 2025.7+)
-- **SCAF-02**: Valid `manifest.json` with `iot_class: cloud_polling`, `version`, `dependencies: [frontend, http, websocket_api]`
+- **SCAF-02**: Valid `manifest.json` with `iot_class: local_polling`, `version`, `dependencies: [frontend, http, websocket_api]`
 - **SCAF-03**: `unique_id` pattern with `_abort_if_unique_id_configured()` (needs customization to use first arr URL)
 - **DIST-01**: HACS-compatible structure (hacs.json, manifest.json, file layout)
 - **DIST-02**: Frontend card served via async static path registration
-- **DIST-03**: CI workflows (hassfest + hacs/action) in `.github/workflows/validate.yml`
+- **DIST-03**: CI workflows (hassfest + hacs/action + pytest) in `.github/workflows/validate.yml`
 
 ## Accumulated Context
 
 ### Decisions
 
-- [Init]: iot_class is `cloud_polling` (arr services may be remote)
+- [Init→Fixed]: iot_class corrected to `local_polling` (arr services are on LAN)
 - [Init]: WebSocket commands for search (returns data to card)
 - [Init]: Service calls for request submission (fire-and-forget with status)
 - [Init]: Quality profiles + root folders fetched at config time, not hardcoded
@@ -91,8 +91,8 @@ The ha-hacs-template v1.0 overlay satisfies:
 - [2026-02-28]: **Phase 5 executed** — in-library badge overlay (green pill on poster/avatar), disabled "In Library" button for owned items, full RequestarrCardEditor with service toggles and title field
 - [2026-02-28]: **3-state model finalized** — `_getItemState` returns: requested, in_library, not_in_library (removed available/monitored)
 - [2026-02-28]: **18-test suite complete** — conftest.py with HA 2025.1.4 shims, full coverage of config flow, coordinator, websocket, sensor, services
-- [2026-02-28]: **binary_sensor.py bug fixed** — stale TemplateCoordinator import replaced with RequestarrCoordinator
 - [2026-02-28]: **CARD_VERSION 0.5.0** — final v1 card version
+- [2026-02-28]: **Tech debt resolved** — show_* toggles wired to _renderTabs(), iot_class→local_polling, pytest CI job added, orphan binary_sensor.py removed, Phase 1 VERIFICATION.md created
 
 ### Pending Todos
 
@@ -105,6 +105,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Phase 5 complete — v1 milestone done
+Stopped at: v1 milestone audit passed (30/30), all tech debt resolved
 Resume file: None
-Resume action: v1 complete. Consider HACS submission or v2 planning.
+Resume action: Run /gsd:complete-milestone v1.0 to archive, then HACS submission or v2 planning
