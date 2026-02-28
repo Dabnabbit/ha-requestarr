@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.6.2";
+const CARD_VERSION = "0.6.3";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -32,8 +32,6 @@ class RequestarrCard extends LitElement {
       _requesting: { type: Object },
       _requestError: { type: Object },
       _expandedRows: { type: Object },
-      _seasonCache: { type: Object },
-      _seasonLoading: { type: Object },
       _albumCache: { type: Object },
       _albumLoading: { type: Object },
     };
@@ -49,8 +47,6 @@ class RequestarrCard extends LitElement {
     this._requesting = {};
     this._requestError = {};
     this._expandedRows = {};
-    this._seasonCache = {};
-    this._seasonLoading = {};
     this._albumCache = {};
     this._albumLoading = {};
     this._debounceTimer = null;
@@ -133,8 +129,6 @@ class RequestarrCard extends LitElement {
       this._results = resp.results || [];
       // Reset expand state for fresh results
       this._expandedRows = {};
-      this._seasonCache = {};
-      this._seasonLoading = {};
       this._albumCache = {};
       this._albumLoading = {};
     } catch (_err) {
@@ -151,25 +145,6 @@ class RequestarrCard extends LitElement {
 
   _toggleExpand(key) {
     this._expandedRows = { ...this._expandedRows, [key]: !this._expandedRows[key] };
-  }
-
-  async _fetchSeasons(item) {
-    if (!item.in_library || !item.arr_id) return; // not in library — use lookup data as-is
-    const id = String(item.tvdb_id);
-    if (this._seasonCache[id] !== undefined) return; // already fetched
-    this._seasonLoading = { ...this._seasonLoading, [id]: true };
-    try {
-      const resp = await this.hass.connection.sendMessagePromise({
-        type: "requestarr/get_series_seasons",
-        arr_id: item.arr_id,
-      });
-      this._seasonCache = { ...this._seasonCache, [id]: resp.seasons || [] };
-    } catch (_err) {
-      // Fall back to lookup data so sub-rows still render
-      this._seasonCache = { ...this._seasonCache, [id]: item.seasons || [] };
-    } finally {
-      this._seasonLoading = { ...this._seasonLoading, [id]: false };
-    }
   }
 
   async _fetchAlbums(item) {
@@ -340,18 +315,9 @@ class RequestarrCard extends LitElement {
   // ---------------------------------------------------------------------------
 
   _renderSeasonSubRows(item) {
-    const tvdbKey = String(item.tvdb_id);
-    if (this._seasonLoading[tvdbKey]) {
-      return html`
-        <div class="sub-rows">
-          <div class="sub-row-loading"><ha-spinner size="small"></ha-spinner></div>
-        </div>
-      `;
-    }
-    // Use fetched /series/{id} data (accurate episodeFileCount) if available,
-    // otherwise fall back to lookup data (episodeFileCount will be absent/0).
-    const rawSeasons = this._seasonCache[tvdbKey] || item.seasons || [];
-    const seasons = [...rawSeasons].sort((a, b) => a.seasonNumber - b.seasonNumber);
+    // item.seasons is already accurate — the TV search handler fetches
+    // /series/{arr_id} for in-library results before returning results.
+    const seasons = [...(item.seasons || [])].sort((a, b) => a.seasonNumber - b.seasonNumber);
     return html`
       <div class="sub-rows">
         ${seasons.map((s) => {
@@ -594,24 +560,22 @@ class RequestarrCard extends LitElement {
             ${item.overview
               ? html`<span class="result-overview">${item.overview}</span>`
               : ""}
-            ${this._renderStatus(state, key, item, isTV ? "Request All" : "Request")}
+            <div class="result-actions">
+              ${this._renderStatus(state, key, item, isTV ? "Request All" : "Request")}
+              ${isTV
+                ? html`<button
+                    class="expand-btn"
+                    @click="${() => this._toggleExpand(key)}"
+                    title="${expanded ? "Collapse seasons" : "Expand seasons"}"
+                  >
+                    <ha-icon icon="${expanded ? "mdi:chevron-down" : "mdi:chevron-right"}"></ha-icon>
+                  </button>`
+                : ""}
+            </div>
             ${reqErr
               ? html`<span class="req-error">${reqErr}</span>`
               : ""}
           </div>
-          ${isTV
-            ? html`<button
-                class="expand-btn"
-                @click="${() => {
-                  const wasExpanded = this._expandedRows[key];
-                  this._toggleExpand(key);
-                  if (!wasExpanded) this._fetchSeasons(item);
-                }}"
-                title="${expanded ? "Collapse" : "Expand seasons"}"
-              >
-                <ha-icon icon="${expanded ? "mdi:chevron-down" : "mdi:chevron-right"}"></ha-icon>
-              </button>`
-            : ""}
         </div>
         ${expanded ? this._renderSeasonSubRows(item) : ""}
       </div>
@@ -655,22 +619,24 @@ class RequestarrCard extends LitElement {
             ${item.overview
               ? html`<span class="result-overview">${item.overview}</span>`
               : ""}
-            ${this._renderStatus(state, key, item, "Request All")}
+            <div class="result-actions">
+              ${this._renderStatus(state, key, item, "Request All")}
+              <button
+                class="expand-btn"
+                @click="${() => {
+                  const wasExpanded = this._expandedRows[key];
+                  this._toggleExpand(key);
+                  if (!wasExpanded) this._fetchAlbums(item);
+                }}"
+                title="${expanded ? "Collapse albums" : "Expand albums"}"
+              >
+                <ha-icon icon="${expanded ? "mdi:chevron-down" : "mdi:chevron-right"}"></ha-icon>
+              </button>
+            </div>
             ${reqErr
               ? html`<span class="req-error">${reqErr}</span>`
               : ""}
           </div>
-          <button
-            class="expand-btn"
-            @click="${() => {
-              const wasExpanded = this._expandedRows[key];
-              this._toggleExpand(key);
-              if (!wasExpanded) this._fetchAlbums(item);
-            }}"
-            title="${expanded ? "Collapse" : "Expand albums"}"
-          >
-            <ha-icon icon="${expanded ? "mdi:chevron-down" : "mdi:chevron-right"}"></ha-icon>
-          </button>
         </div>
         ${expanded ? this._renderAlbumSubRows(item) : ""}
       </div>
@@ -864,15 +830,21 @@ class RequestarrCard extends LitElement {
         align-items: center;
       }
 
+      /* Action row — request button + expand chevron side by side */
+      .result-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
       /* Expand button */
       .expand-btn {
         background: none;
         border: none;
         cursor: pointer;
-        padding: 4px;
+        padding: 2px;
         color: var(--secondary-text-color);
         flex-shrink: 0;
-        align-self: center;
         display: flex;
         align-items: center;
         border-radius: 50%;
@@ -883,7 +855,7 @@ class RequestarrCard extends LitElement {
         color: var(--primary-color);
       }
       .expand-btn ha-icon {
-        --mdc-icon-size: 24px;
+        --mdc-icon-size: 20px;
       }
 
       /* Sub-rows */
@@ -1032,7 +1004,6 @@ class RequestarrCard extends LitElement {
         cursor: pointer;
         font-size: 0.8rem;
         font-weight: 500;
-        align-self: flex-start;
       }
       .req-btn-sm {
         padding: 3px 10px;

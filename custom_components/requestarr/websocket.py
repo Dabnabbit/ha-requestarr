@@ -330,10 +330,75 @@ async def websocket_search_tv(
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Handle TV series search via Sonarr lookup endpoint."""
-    await _handle_search(
-        hass, connection, msg, SERVICE_SONARR, _normalize_tv_result
-    )
+    """Handle TV series search via Sonarr lookup endpoint.
+
+    For series already in the library, fetches accurate season statistics
+    from /series/{id} so that episodeFileCount is reliable for per-season
+    in-library display. The lookup endpoint does not populate episodeFileCount.
+    """
+    query = msg["query"].strip()
+    if not query:
+        connection.send_result(
+            msg["id"],
+            {
+                "error": "invalid_query",
+                "message": "Search query cannot be empty",
+                "results": [],
+            },
+        )
+        return
+
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Requestarr not configured")
+        return
+
+    client = coordinator.get_client(SERVICE_SONARR)
+    if client is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "error": "service_not_configured",
+                "message": "Sonarr is not configured in Requestarr",
+                "results": [],
+            },
+        )
+        return
+
+    config_data = _get_config_data(hass)
+
+    try:
+        raw_results = await client.async_search(query)
+    except (CannotConnectError, InvalidAuthError, ServerError) as err:
+        _LOGGER.warning("Search failed for sonarr: %s", err)
+        connection.send_result(
+            msg["id"],
+            {
+                "error": "service_unavailable",
+                "message": f"Sonarr is unavailable: {err}",
+                "results": [],
+            },
+        )
+        return
+
+    results = []
+    for item in raw_results[:MAX_SEARCH_RESULTS]:
+        normalized = _normalize_tv_result(item, config_data)
+        # Enrich in-library results with accurate season stats from /series/{id}.
+        # The lookup endpoint does not populate statistics.episodeFileCount, so
+        # per-season library status would be unreliable without this extra call.
+        if normalized["arr_id"] is not None:
+            try:
+                accurate_seasons = await client.async_get_series_seasons(
+                    normalized["arr_id"]
+                )
+                if accurate_seasons:
+                    normalized["seasons"] = accurate_seasons
+            except (CannotConnectError, InvalidAuthError, ServerError):
+                pass  # keep lookup seasons as fallback
+        results.append(normalized)
+
+    connection.send_result(msg["id"], {"results": results})
 
 
 @websocket_api.websocket_command(
