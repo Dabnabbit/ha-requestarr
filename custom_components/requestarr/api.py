@@ -184,6 +184,90 @@ class ArrClient:
         endpoint = LOOKUP_ENDPOINTS[self._service_type]
         return await self._request("GET", endpoint, params={"term": query})
 
+    async def async_request_movie(
+        self,
+        tmdb_id: int,
+        title: str,
+        title_slug: str,
+        quality_profile_id: int,
+        root_folder_path: str,
+    ) -> dict[str, Any]:
+        """Add a movie to Radarr.
+
+        Args:
+            tmdb_id: TMDB ID of the movie.
+            title: Movie title.
+            title_slug: URL-friendly slug (e.g. "interstellar-157336").
+            quality_profile_id: Quality profile ID from config entry.
+            root_folder_path: Root folder path from config entry.
+
+        Returns:
+            Parsed JSON response from Radarr.
+
+        Raises:
+            CannotConnectError: Cannot reach Radarr.
+            InvalidAuthError: API key rejected.
+            ServerError: Non-auth HTTP error. HTTP 400 means movie already exists.
+        """
+        payload = {
+            "tmdbId": tmdb_id,
+            "title": title,
+            "titleSlug": title_slug,
+            "qualityProfileId": int(quality_profile_id),
+            "rootFolderPath": root_folder_path,
+            "monitored": True,
+            "minimumAvailability": "released",
+            "addOptions": {"searchForMovie": True},
+        }
+        return await self._request("POST", "/movie", json=payload)
+
+    async def async_request_series(
+        self,
+        tvdb_id: int,
+        title: str,
+        title_slug: str,
+        quality_profile_id: int,
+        root_folder_path: str,
+        seasons: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Add a series to Sonarr.
+
+        Args:
+            tvdb_id: TVDB ID of the series.
+            title: Series title.
+            title_slug: URL-friendly slug.
+            quality_profile_id: Quality profile ID from config entry.
+            root_folder_path: Root folder path from config entry.
+            seasons: Raw seasons list from Sonarr lookup response.
+
+        Returns:
+            Parsed JSON response from Sonarr.
+
+        Raises:
+            CannotConnectError: Cannot reach Sonarr.
+            InvalidAuthError: API key rejected.
+            ServerError: Non-auth HTTP error. HTTP 400 means series already exists.
+        """
+        payload = {
+            "tvdbId": tvdb_id,
+            "title": title,
+            "titleSlug": title_slug,
+            "qualityProfileId": int(quality_profile_id),
+            "rootFolderPath": root_folder_path,
+            "monitored": True,
+            "seasonFolder": True,
+            "seriesType": "standard",
+            "seasons": [
+                {"seasonNumber": s.get("seasonNumber", 0), "monitored": True}
+                for s in seasons
+            ],
+            "addOptions": {
+                "searchForMissingEpisodes": True,
+                "monitor": "all",
+            },
+        }
+        return await self._request("POST", "/series", json=payload)
+
     async def async_get_library_count(self) -> int:
         """Fetch the total number of items in the library.
 
