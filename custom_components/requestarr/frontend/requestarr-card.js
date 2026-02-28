@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.6.4";
+const CARD_VERSION = "0.6.5";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -176,7 +176,7 @@ class RequestarrCard extends LitElement {
         : String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
     const reqState = this._requesting[key];
     if (reqState === "requested") return "requested";
-    if (item.in_library) return "in_library";
+    if (reqState === "in_library" || item.in_library) return "in_library";
     return "not_in_library";
   }
 
@@ -218,6 +218,9 @@ class RequestarrCard extends LitElement {
       const resp = await this.hass.connection.sendMessagePromise(payload);
       if (resp.success) {
         this._requesting = { ...this._requesting, [key]: "requested" };
+      } else if (resp.error_code === "already_exists") {
+        // Already in the arr library — flip to in_library state silently
+        this._requesting = { ...this._requesting, [key]: "in_library" };
       } else {
         this._requesting = { ...this._requesting, [key]: "error" };
         this._requestError = {
@@ -254,6 +257,8 @@ class RequestarrCard extends LitElement {
       });
       if (resp.success) {
         this._requesting = { ...this._requesting, [reqKey]: "requested" };
+      } else if (resp.error_code === "already_exists") {
+        this._requesting = { ...this._requesting, [reqKey]: "in_library" };
       } else {
         this._requesting = { ...this._requesting, [reqKey]: "error" };
         this._requestError = {
@@ -279,6 +284,8 @@ class RequestarrCard extends LitElement {
       });
       if (resp.success) {
         this._requesting = { ...this._requesting, [reqKey]: "requested" };
+      } else if (resp.error_code === "already_exists") {
+        this._requesting = { ...this._requesting, [reqKey]: "in_library" };
       } else {
         this._requesting = { ...this._requesting, [reqKey]: "error" };
         this._requestError = {
@@ -323,10 +330,10 @@ class RequestarrCard extends LitElement {
         ${seasons.map((s) => {
           const label = s.seasonNumber === 0 ? "Specials" : `Season ${s.seasonNumber}`;
           const reqKey = `${item.tvdb_id}:s${s.seasonNumber}`;
-          const isInLib = item.in_library && !!(s.statistics && s.statistics.episodeFileCount > 0);
           const reqState = this._requesting[reqKey];
           const isRequesting = reqState === "requesting";
           const isRequested = reqState === "requested";
+          const isInLib = reqState === "in_library" || (item.in_library && !!(s.statistics && s.statistics.episodeFileCount > 0));
           const reqErr = this._requestError[reqKey];
           const epCount =
             s.statistics && s.statistics.totalEpisodeCount != null
@@ -388,10 +395,10 @@ class RequestarrCard extends LitElement {
       <div class="sub-rows">
         ${albums.map((album) => {
           const reqKey = `${id}:a${album.foreign_album_id}`;
-          const isInLib = album.in_library || album.monitored;
           const reqState = this._requesting[reqKey];
           const isRequesting = reqState === "requesting";
           const isRequested = reqState === "requested";
+          const isInLib = reqState === "in_library" || album.in_library || album.monitored;
           const reqErr = this._requestError[reqKey];
           return html`
             <div class="sub-row">
