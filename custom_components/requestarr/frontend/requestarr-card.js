@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.6.0";
+const CARD_VERSION = "0.6.1";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -323,7 +323,7 @@ class RequestarrCard extends LitElement {
         ${seasons.map((s) => {
           const label = s.seasonNumber === 0 ? "Specials" : `Season ${s.seasonNumber}`;
           const reqKey = `${item.tvdb_id}:s${s.seasonNumber}`;
-          const isInLib = item.in_library && s.monitored === true;
+          const isInLib = item.in_library && !!(s.statistics && s.statistics.episodeFileCount > 0);
           const reqState = this._requesting[reqKey];
           const isRequesting = reqState === "requesting";
           const isRequested = reqState === "requested";
