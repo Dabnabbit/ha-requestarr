@@ -29,6 +29,8 @@ from .const import (
     SERVICE_LIDARR,
     SERVICE_RADARR,
     SERVICE_SONARR,
+    WS_TYPE_REQUEST_MOVIE,
+    WS_TYPE_REQUEST_TV,
     WS_TYPE_SEARCH_MOVIES,
     WS_TYPE_SEARCH_MUSIC,
     WS_TYPE_SEARCH_TV,
@@ -122,6 +124,8 @@ def _normalize_movie_result(
         "in_library": arr_id > 0,
         "arr_id": arr_id if arr_id > 0 else None,
         "tmdb_id": item.get("tmdbId"),
+        "title_slug": item.get("titleSlug", ""),
+        "has_file": item.get("hasFile", False),
         "quality_profile": _resolve_profile_name(
             config_data.get(CONF_RADARR_PROFILES, []),
             config_data.get(CONF_RADARR_QUALITY_PROFILE_ID),
@@ -146,6 +150,9 @@ def _normalize_tv_result(
         "in_library": arr_id > 0,
         "arr_id": arr_id if arr_id > 0 else None,
         "tvdb_id": item.get("tvdbId"),
+        "title_slug": item.get("titleSlug", ""),
+        "has_file": False,  # Sonarr lookup statistics always 0 (issue #4942)
+        "seasons": item.get("seasons", []),  # pass raw seasons list through
         "quality_profile": _resolve_profile_name(
             config_data.get(CONF_SONARR_PROFILES, []),
             config_data.get(CONF_SONARR_QUALITY_PROFILE_ID),

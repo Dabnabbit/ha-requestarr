@@ -62,10 +62,14 @@ LOOKUP_ENDPOINTS: dict[str, str] = {
     SERVICE_LIDARR: "/artist/lookup",
 }
 
-# WebSocket command types
+# WebSocket command types — search
 WS_TYPE_SEARCH_MOVIES = f"{DOMAIN}/search_movies"
 WS_TYPE_SEARCH_TV = f"{DOMAIN}/search_tv"
 WS_TYPE_SEARCH_MUSIC = f"{DOMAIN}/search_music"
+
+# WebSocket command types — request
+WS_TYPE_REQUEST_MOVIE = f"{DOMAIN}/request_movie"
+WS_TYPE_REQUEST_TV = f"{DOMAIN}/request_series"
 
 # Search limits
 MAX_SEARCH_RESULTS = 20
