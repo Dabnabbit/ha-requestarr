@@ -344,6 +344,180 @@ async def websocket_search_music(
     )
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_REQUEST_MOVIE,
+        vol.Required("tmdb_id"): int,
+        vol.Required("title"): str,
+        vol.Required("title_slug"): str,
+    }
+)
+@websocket_api.async_response
+async def websocket_request_movie(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Handle movie request via Radarr POST."""
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "not_configured",
+                "message": "Requestarr not configured",
+            },
+        )
+        return
+
+    client = coordinator.get_client(SERVICE_RADARR)
+    if client is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "service_not_configured",
+                "message": "Radarr is not configured",
+            },
+        )
+        return
+
+    config_data = _get_config_data(hass)
+    quality_profile_id = config_data.get(CONF_RADARR_QUALITY_PROFILE_ID)
+    root_folder = config_data.get(CONF_RADARR_ROOT_FOLDER, "")
+
+    try:
+        await client.async_request_movie(
+            tmdb_id=msg["tmdb_id"],
+            title=msg["title"],
+            title_slug=msg["title_slug"],
+            quality_profile_id=quality_profile_id,
+            root_folder_path=root_folder,
+        )
+        connection.send_result(msg["id"], {"success": True})
+    except ServerError as err:
+        err_str = str(err)
+        # Radarr 400 on the add endpoint means the movie is already in the library
+        if "400" in err_str:
+            connection.send_result(
+                msg["id"],
+                {
+                    "success": False,
+                    "error_code": "already_exists",
+                    "message": "This movie is already in Radarr",
+                },
+            )
+        else:
+            _LOGGER.warning("Movie request failed: %s", err)
+            connection.send_result(
+                msg["id"],
+                {
+                    "success": False,
+                    "error_code": "service_unavailable",
+                    "message": str(err),
+                },
+            )
+    except (CannotConnectError, InvalidAuthError) as err:
+        _LOGGER.warning("Movie request failed: %s", err)
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "service_unavailable",
+                "message": str(err),
+            },
+        )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_REQUEST_TV,
+        vol.Required("tvdb_id"): int,
+        vol.Required("title"): str,
+        vol.Required("title_slug"): str,
+        vol.Required("seasons"): list,
+    }
+)
+@websocket_api.async_response
+async def websocket_request_series(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Handle TV series request via Sonarr POST."""
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "not_configured",
+                "message": "Requestarr not configured",
+            },
+        )
+        return
+
+    client = coordinator.get_client(SERVICE_SONARR)
+    if client is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "service_not_configured",
+                "message": "Sonarr is not configured",
+            },
+        )
+        return
+
+    config_data = _get_config_data(hass)
+    quality_profile_id = config_data.get(CONF_SONARR_QUALITY_PROFILE_ID)
+    root_folder = config_data.get(CONF_SONARR_ROOT_FOLDER, "")
+
+    try:
+        await client.async_request_series(
+            tvdb_id=msg["tvdb_id"],
+            title=msg["title"],
+            title_slug=msg["title_slug"],
+            quality_profile_id=quality_profile_id,
+            root_folder_path=root_folder,
+            seasons=msg["seasons"],
+        )
+        connection.send_result(msg["id"], {"success": True})
+    except ServerError as err:
+        err_str = str(err)
+        # Sonarr 400 on the add endpoint means the series is already in the library
+        if "400" in err_str:
+            connection.send_result(
+                msg["id"],
+                {
+                    "success": False,
+                    "error_code": "already_exists",
+                    "message": "This series is already in Sonarr",
+                },
+            )
+        else:
+            _LOGGER.warning("Series request failed: %s", err)
+            connection.send_result(
+                msg["id"],
+                {
+                    "success": False,
+                    "error_code": "service_unavailable",
+                    "message": str(err),
+                },
+            )
+    except (CannotConnectError, InvalidAuthError) as err:
+        _LOGGER.warning("Series request failed: %s", err)
+        connection.send_result(
+            msg["id"],
+            {
+                "success": False,
+                "error_code": "service_unavailable",
+                "message": str(err),
+            },
+        )
+
+
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
@@ -356,3 +530,5 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_search_movies)
     websocket_api.async_register_command(hass, websocket_search_tv)
     websocket_api.async_register_command(hass, websocket_search_music)
+    websocket_api.async_register_command(hass, websocket_request_movie)
+    websocket_api.async_register_command(hass, websocket_request_series)
