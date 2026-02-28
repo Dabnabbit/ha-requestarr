@@ -276,6 +276,7 @@ class ArrClient:
     async def async_request_artist(
         self,
         foreign_artist_id: str,
+        artist_name: str,
         quality_profile_id: int,
         metadata_profile_id: int,
         root_folder_path: str,
@@ -284,6 +285,7 @@ class ArrClient:
 
         Args:
             foreign_artist_id: MusicBrainz artist GUID (string UUID).
+            artist_name: Display name for the artist (required by Lidarr).
             quality_profile_id: Quality profile ID from config entry.
             metadata_profile_id: Metadata profile ID from config entry (Lidarr-specific).
             root_folder_path: Root folder path from config entry.
@@ -298,6 +300,7 @@ class ArrClient:
         """
         payload = {
             "foreignArtistId": foreign_artist_id,        # string UUID — DO NOT cast to int
+            "artistName": artist_name,
             "qualityProfileId": int(quality_profile_id),
             "metadataProfileId": int(metadata_profile_id),
             "rootFolderPath": root_folder_path,
@@ -363,6 +366,7 @@ class ArrClient:
         self,
         foreign_artist_id: str,
         foreign_album_id: str,
+        artist_name: str,
         quality_profile_id: int,
         metadata_profile_id: int,
         root_folder_path: str,
@@ -376,6 +380,7 @@ class ArrClient:
         Args:
             foreign_artist_id: MusicBrainz artist GUID.
             foreign_album_id: MusicBrainz album GUID.
+            artist_name: Display name for the artist (required by Lidarr).
             quality_profile_id: Quality profile ID from config entry.
             metadata_profile_id: Metadata profile ID from config entry.
             root_folder_path: Root folder path from config entry.
@@ -401,6 +406,7 @@ class ArrClient:
         ]
         payload = {
             "foreignArtistId": foreign_artist_id,
+            "artistName": artist_name,
             "qualityProfileId": int(quality_profile_id),
             "metadataProfileId": int(metadata_profile_id),
             "rootFolderPath": root_folder_path,

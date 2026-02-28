@@ -639,6 +639,7 @@ async def websocket_request_artist(
     try:
         await client.async_request_artist(
             foreign_artist_id=msg["foreign_artist_id"],
+            artist_name=msg["title"],
             quality_profile_id=quality_profile_id,
             metadata_profile_id=metadata_profile_id,
             root_folder_path=root_folder,
@@ -749,6 +750,7 @@ async def websocket_get_artist_albums(
         vol.Required("type"): WS_TYPE_REQUEST_ALBUM,
         vol.Required("foreign_artist_id"): str,
         vol.Required("foreign_album_id"): str,
+        vol.Required("title"): str,
     }
 )
 @websocket_api.async_response
@@ -791,6 +793,7 @@ async def websocket_request_album(
         await client.async_request_album(
             foreign_artist_id=msg["foreign_artist_id"],
             foreign_album_id=msg["foreign_album_id"],
+            artist_name=msg["title"],
             quality_profile_id=quality_profile_id,
             metadata_profile_id=metadata_profile_id,
             root_folder_path=root_folder,

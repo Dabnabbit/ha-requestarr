@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.6.6";
+const CARD_VERSION = "0.6.7";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -285,6 +285,7 @@ class RequestarrCard extends LitElement {
         type: "requestarr/request_album",
         foreign_artist_id: item.foreign_artist_id,
         foreign_album_id: album.foreign_album_id,
+        title: item.title,
       });
       if (resp.success) {
         this._requesting = { ...this._requesting, [reqKey]: "requested" };
