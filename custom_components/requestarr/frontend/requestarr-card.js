@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.6.3";
+const CARD_VERSION = "0.6.4";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -621,17 +621,19 @@ class RequestarrCard extends LitElement {
               : ""}
             <div class="result-actions">
               ${this._renderStatus(state, key, item, "Request All")}
-              <button
-                class="expand-btn"
-                @click="${() => {
-                  const wasExpanded = this._expandedRows[key];
-                  this._toggleExpand(key);
-                  if (!wasExpanded) this._fetchAlbums(item);
-                }}"
-                title="${expanded ? "Collapse albums" : "Expand albums"}"
-              >
-                <ha-icon icon="${expanded ? "mdi:chevron-down" : "mdi:chevron-right"}"></ha-icon>
-              </button>
+              ${item.in_library
+                ? html`<button
+                    class="expand-btn"
+                    @click="${() => {
+                      const wasExpanded = this._expandedRows[key];
+                      this._toggleExpand(key);
+                      if (!wasExpanded) this._fetchAlbums(item);
+                    }}"
+                    title="${expanded ? "Collapse albums" : "Expand albums"}"
+                  >
+                    <ha-icon icon="${expanded ? "mdi:chevron-down" : "mdi:chevron-right"}"></ha-icon>
+                  </button>`
+                : ""}
             </div>
             ${reqErr
               ? html`<span class="req-error">${reqErr}</span>`
