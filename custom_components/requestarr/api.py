@@ -120,9 +120,13 @@ class ArrClient:
             )
 
         if response.status >= 400:
+            try:
+                body = await response.text()
+            except Exception:
+                body = ""
             raise ServerError(
                 f"{self._service_type} returned HTTP {response.status}: "
-                f"{response.reason}"
+                f"{response.reason}. {body}"
             )
 
         # Handle empty response bodies (some endpoints return 200 with no body)
