@@ -176,7 +176,7 @@ async def test_request_movie_already_exists(
             ArrClient,
             "async_request_movie",
             new_callable=AsyncMock,
-            side_effect=ServerError("HTTP 400: Movie already exists"),
+            side_effect=ServerError("HTTP 400: Bad Request. [{\"errorMessage\": \"This movie has already been added\"}]"),
         ):
             radarr_entry.add_to_hass(hass)
             assert await hass.config_entries.async_setup(radarr_entry.entry_id)
