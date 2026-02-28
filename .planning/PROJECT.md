@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A Home Assistant HACS integration that lets household members search for and request movies, TV shows, and music directly from a Lovelace dashboard card. It connects to TMDB for search and Radarr/Sonarr/Lidarr for fulfillment, replacing the need for a separate Jellyseerr container.
+A Home Assistant HACS integration that lets household members search for and request movies, TV shows, and music directly from a Lovelace dashboard card. It connects to Radarr/Sonarr/Lidarr for search and fulfillment (arr lookup endpoints as primary search API — no TMDB key needed), replacing the need for a separate Jellyseerr container.
 
 ## Core Value
 
@@ -12,26 +12,25 @@ Users can search for media and submit requests to their arr stack from a single 
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Multi-step config flow: Radarr (optional) → Sonarr (optional) → Lidarr (optional) with live validation — Phase 1
+- ✓ Connection validation for each arr service during config, fetching quality profiles + root folders — Phase 1
+- ✓ Library count sensors: Radarr movies, Sonarr series, Lidarr artists — Phase 2
+- ✓ Movie search via Radarr lookup API (returns TMDB metadata + poster CDN URLs) — Phase 2
+- ✓ TV search via Sonarr lookup API (returns TheTVDB metadata + poster CDN URLs + tvdbId) — Phase 2
+- ✓ Music search via Lidarr lookup API (returns fanart.tv images + MusicBrainz metadata) — Phase 4
+- ✓ Search results displayed with poster/avatar thumbnails, titles, years — Phase 2/3
+- ✓ One-click request to send movie to Radarr — Phase 3
+- ✓ One-click request to send TV series to Sonarr (tvdbId from lookup, no TMDB translation) — Phase 3
+- ✓ One-click request to send artist to Lidarr (foreignArtistId from lookup) — Phase 4
+- ✓ Tabbed card UI: Movies / TV / Music — Phase 3 (Movies/TV), Phase 4 (Music activated)
+- ✓ Frontend card served via integration's static path registration — Phase 1 (template)
 
 ### Active
 
-- [ ] Multi-step config flow: Radarr (optional) → Sonarr (optional) → Lidarr (optional) with live validation
-- [ ] Connection validation for each arr service during config, fetching quality profiles + root folders
-- [ ] Movie search via Radarr lookup API (returns TMDB metadata + poster CDN URLs)
-- [ ] TV search via Sonarr lookup API (returns TheTVDB metadata + poster CDN URLs + tvdbId)
-- [ ] Music search via Lidarr lookup API (returns fanart.tv images + MusicBrainz metadata)
-- [ ] Search results displayed with poster/avatar thumbnails, titles, years, and descriptions
-- [ ] One-click request to send movie to Radarr
-- [ ] One-click request to send TV series to Sonarr (tvdbId already in lookup response)
-- [ ] One-click request to send artist to Lidarr (foreignArtistId from lookup)
-- [ ] Tabbed card UI: Movies / TV / Music
-- [ ] Library count sensors: Radarr movies, Sonarr series, Lidarr artists
-- [ ] "Already in library" detection via arr lookup response (id > 0)
-- [ ] Lovelace card with visual editor
-- [ ] HACS-compatible distribution (hacs.json, manifest.json, GitHub Actions)
-- [ ] Frontend card served via integration's static path registration
-- [ ] Per-user request context via HA user identity
+- [ ] "Already in library" detection via arr lookup response (id > 0) with visual badge — Phase 5 (REQT-05)
+- [ ] Lovelace card with visual editor — Phase 5 (CARD-05)
+- [ ] HACS-compatible distribution validation (hassfest + hacs/action CI) — Phase 5
+- [ ] Per-user request context via HA user identity — Phase 5 (deferred if complexity high)
 
 ### Out of Scope
 
@@ -74,13 +73,17 @@ Users can search for media and submit requests to their arr stack from a single 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Replace Jellyseerr with native HA card | Eliminate separate container + auth, add Lidarr support from day one | — Pending |
-| Arr lookup endpoints for all search | Eliminates TMDB key, MusicBrainz client, TVDB mapping; uniform X-Api-Key auth; richer metadata (multi-source ratings); free "in library" detection (id > 0) | Decided 2026-02-23 |
-| Public CDN URLs for images | Arr responses include `remoteUrl`/`remotePoster` pointing to public CDNs (TMDB, TheTVDB, fanart.tv) — no auth needed for `<img>` tags | Decided 2026-02-23 |
-| Circular avatars for music results | Spotify/Apple Music convention — circle = artist, rectangle = album/content; handles 40-60% missing fanart.tv images with initials placeholder | Decided 2026-02-23 |
-| Single JS file (no build step) | HACS convention, simpler distribution, LitElement from HA | — Pending |
-| Tabbed card UI (Movies/TV/Music) | Natural organization matching arr service boundaries | — Pending |
-| Jellyseerr UX patterns as design reference | 300ms debounce, green/blue/yellow/red status badges, poster-centric results, 3-tap request flow, auto-approval defaults | Decided 2026-02-23 |
+| Replace Jellyseerr with native HA card | Eliminate separate container + auth, add Lidarr support from day one | Shipped Phase 1-4 |
+| Arr lookup endpoints for all search | Eliminates TMDB key, MusicBrainz client, TVDB mapping; uniform X-Api-Key auth; richer metadata (multi-source ratings); free "in library" detection (id > 0) | Decided 2026-02-23, validated Phase 2-4 |
+| Public CDN URLs for images | Arr responses include `remoteUrl`/`remotePoster` pointing to public CDNs (TMDB, TheTVDB, fanart.tv) — no auth needed for `<img>` tags | Decided 2026-02-23, validated Phase 2-4 |
+| Circular avatars for music results | Spotify/Apple Music convention — circle = artist, rectangle = album/content; handles 40-60% missing fanart.tv images with initials placeholder | Shipped Phase 4 |
+| Single JS file (no build step) | HACS convention, simpler distribution, LitElement from HA | Shipped Phase 3 (515 lines) |
+| Tabbed card UI (Movies/TV/Music) | Natural organization matching arr service boundaries | Shipped Phase 3 (Movies/TV), Phase 4 (Music) |
+| Jellyseerr UX patterns as design reference | 300ms debounce, green/blue/yellow/red status badges, poster-centric results, 3-tap request flow | Decided 2026-02-23, implemented Phase 3 |
+| `send_result` for all request errors (not `send_error`) | JS `sendMessagePromise` always resolves; card can display inline errors without try/catch at top level | Phase 3 — validated pattern |
+| HTTP 400 from arr add endpoint = duplicate | Radarr/Sonarr reliably return 400 for duplicate adds — mapped to `already_exists` error code | Phase 3 |
+| `int(quality_profile_id)` cast in POST payloads | Options flow stores profile IDs as strings from HTML selectors; arr services validate as integers (422 without cast) | Phase 3 |
+| Inline confirm dialog (not `window.confirm`) | `window.confirm` is blocked in shadow DOM contexts; inline overlay required | Phase 3 |
 
 ---
-*Last updated: 2026-02-23 — arr-lookup architecture, Jellyseerr UX research, music UX research*
+*Last updated: 2026-02-27 after Phase 3 — movie/TV request + Lovelace card shipped; Phase 4 (Music/Lidarr) also complete*

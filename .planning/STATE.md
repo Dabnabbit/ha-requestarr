@@ -15,19 +15,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-23)
+See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Search for media and submit requests to arr stack from a single HA dashboard card — no separate app, no separate auth, no separate container
-**Current focus:** Phase 2 complete. Ready for Phase 3.
+**Current focus:** Phases 1-4 complete. Ready to plan Phase 5 (Library State + Card Polish + Validation).
 
 ## Current Position
 
-Phase: 3 of 5 (Movie & TV Request)
-Plan: 0 of 2 in current phase
-Status: Phase 2 complete, ready to plan Phase 3
-Last activity: 2026-02-27 — Phase 2 executed: service status sensors, WebSocket search commands with result normalization
+Phase: 5 of 5 (Library State + Card Polish + Validation)
+Plan: Not started
+Status: Phases 1-4 complete, ready to plan Phase 5
+Last activity: 2026-02-27 — Phase 4 executed: Lidarr artist request, Music tab activated with circular avatars
 
-Progress: [█████░░░░░] 50% (Phase 2 complete)
+Progress: [████████████████████] 5/5 plans (100% of planned phases)
 
 ## What the Template Provides (Already Done)
 
@@ -82,6 +82,12 @@ The ha-hacs-template v1.0 overlay satisfies:
 - [2026-02-27]: **Structured WS error codes** — invalid_query, service_not_configured, service_unavailable
 - [2026-02-27]: **Search results self-contained** — include in_library, arr_id, external IDs, default profile name, root folder path
 - [2026-02-27]: **Profile name resolution** — stored profiles list matched by current quality_profile_id
+- [2026-02-27]: **Phase 3 executed** — request_movie + request_series WS commands, Lovelace card with Movies/TV tabs + confirm dialog
+- [2026-02-27]: **send_result for all request errors** — never send_error, so JS sendMessagePromise always resolves (inline error display)
+- [2026-02-27]: **HTTP 400 from arr add = already_exists** — Radarr/Sonarr reliably return 400 for duplicate adds
+- [2026-02-27]: **int(quality_profile_id) cast** — options flow stores as string, arr services require int (422 without cast)
+- [2026-02-27]: **Inline confirm dialog** — window.confirm blocked in shadow DOM; overlay div used instead
+- [2026-02-27]: **Phase 4 executed** — request_artist WS command + Lidarr POST, Music tab activated with circular avatar rows
 
 ### Pending Todos
 
@@ -94,6 +100,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Phase 2 complete, verification pending
-Resume file: .planning/phases/02-sensors-search/02-01-SUMMARY.md
-Resume action: Run /gsd:plan-phase 3 for Movie & TV Request
+Stopped at: Phases 1-4 complete, ready to plan Phase 5
+Resume file: None
+Resume action: Run /gsd:discuss-phase 5 or /gsd:plan-phase 5
