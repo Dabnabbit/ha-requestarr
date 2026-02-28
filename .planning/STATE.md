@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-02-28T02:16:07.559Z"
+status: complete
+last_updated: "2026-02-28T03:30:00.000Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 5
-  completed_plans: 5
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 7
+  completed_plans: 7
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Search for media and submit requests to arr stack from a single HA dashboard card — no separate app, no separate auth, no separate container
-**Current focus:** Phases 1-4 complete. Ready to plan Phase 5 (Library State + Card Polish + Validation).
+**Current focus:** v1 milestone complete. All 5 phases executed and verified.
 
 ## Current Position
 
-Phase: 5 of 5 (Library State + Card Polish + Validation)
-Plan: Not started
-Status: Phases 1-4 complete, ready to plan Phase 5
-Last activity: 2026-02-27 — Phase 4 executed: Lidarr artist request, Music tab activated with circular avatars
+Phase: 5 of 5 (Library State + Card Polish + Validation) — COMPLETE
+Plan: All plans complete
+Status: v1 milestone complete — all 5 phases executed and verified
+Last activity: 2026-02-28 — Phase 5 executed: in-library badges, card editor, 18-test suite, README
 
 Progress: [████████████████████] 5/5 plans (100% of planned phases)
 
@@ -88,10 +88,15 @@ The ha-hacs-template v1.0 overlay satisfies:
 - [2026-02-27]: **int(quality_profile_id) cast** — options flow stores as string, arr services require int (422 without cast)
 - [2026-02-27]: **Inline confirm dialog** — window.confirm blocked in shadow DOM; overlay div used instead
 - [2026-02-27]: **Phase 4 executed** — request_artist WS command + Lidarr POST, Music tab activated with circular avatar rows
+- [2026-02-28]: **Phase 5 executed** — in-library badge overlay (green pill on poster/avatar), disabled "In Library" button for owned items, full RequestarrCardEditor with service toggles and title field
+- [2026-02-28]: **3-state model finalized** — `_getItemState` returns: requested, in_library, not_in_library (removed available/monitored)
+- [2026-02-28]: **18-test suite complete** — conftest.py with HA 2025.1.4 shims, full coverage of config flow, coordinator, websocket, sensor, services
+- [2026-02-28]: **binary_sensor.py bug fixed** — stale TemplateCoordinator import replaced with RequestarrCoordinator
+- [2026-02-28]: **CARD_VERSION 0.5.0** — final v1 card version
 
 ### Pending Todos
 
-None.
+None — v1 milestone complete.
 
 ### Blockers/Concerns
 
@@ -99,7 +104,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-27
-Stopped at: Phases 1-4 complete, ready to plan Phase 5
+Last session: 2026-02-28
+Stopped at: Phase 5 complete — v1 milestone done
 Resume file: None
-Resume action: Run /gsd:discuss-phase 5 or /gsd:plan-phase 5
+Resume action: v1 complete. Consider HACS submission or v2 planning.

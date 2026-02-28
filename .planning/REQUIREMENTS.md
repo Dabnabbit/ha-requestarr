@@ -16,41 +16,41 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Configuration
 
-- [ ] **CONF-01**: User can configure Radarr connection (URL, API key) with live validation via `/api/v3/system/status`
-- [ ] **CONF-02**: User can configure Sonarr connection (URL, API key) with live validation via `/api/v3/system/status`
-- [ ] **CONF-03**: User can configure Lidarr connection (URL, API key) with live validation via `/api/v1/system/status`
-- [ ] **CONF-04**: Each arr service is optional (user can skip Radarr, Sonarr, or Lidarr) but at least one must be configured
-- [ ] **CONF-05**: Quality profile, root folder, and metadata profile (Lidarr) fetched from each arr service at config time
+- [x] **CONF-01**: User can configure Radarr connection (URL, API key) with live validation via `/api/v3/system/status`
+- [x] **CONF-02**: User can configure Sonarr connection (URL, API key) with live validation via `/api/v3/system/status`
+- [x] **CONF-03**: User can configure Lidarr connection (URL, API key) with live validation via `/api/v1/system/status`
+- [x] **CONF-04**: Each arr service is optional (user can skip Radarr, Sonarr, or Lidarr) but at least one must be configured
+- [x] **CONF-05**: Quality profile, root folder, and metadata profile (Lidarr) fetched from each arr service at config time
 
 ### Sensors
 
-- [ ] **SENS-01**: Radarr movie count sensor shows total movies in library
-- [ ] **SENS-02**: Sonarr series count sensor shows total TV series in library
-- [ ] **SENS-03**: Lidarr artist count sensor shows total artists in library
-- [ ] **SENS-04**: Sensors update via DataUpdateCoordinator polling every 5 minutes
+- [x] **SENS-01**: Radarr movie count sensor shows total movies in library
+- [x] **SENS-02**: Sonarr series count sensor shows total TV series in library
+- [x] **SENS-03**: Lidarr artist count sensor shows total artists in library
+- [x] **SENS-04**: Sensors update via DataUpdateCoordinator polling every 5 minutes
 
 ### Search
 
-- [ ] **SRCH-01**: User can search for movies via Radarr lookup endpoint (`/api/v3/movie/lookup`) through WebSocket command
-- [ ] **SRCH-02**: User can search for TV shows via Sonarr lookup endpoint (`/api/v3/series/lookup`) through WebSocket command
-- [ ] **SRCH-03**: User can search for music artists via Lidarr lookup endpoint (`/api/v1/artist/lookup`) through WebSocket command
-- [ ] **SRCH-04**: Search results display poster/avatar thumbnail (from public CDN URLs in response), title, year, and description
-- [ ] **SRCH-05**: Arr API keys stay server-side (never exposed to card JavaScript); card uses public CDN image URLs from `remoteUrl`/`remotePoster` fields
+- [x] **SRCH-01**: User can search for movies via Radarr lookup endpoint (`/api/v3/movie/lookup`) through WebSocket command
+- [x] **SRCH-02**: User can search for TV shows via Sonarr lookup endpoint (`/api/v3/series/lookup`) through WebSocket command
+- [x] **SRCH-03**: User can search for music artists via Lidarr lookup endpoint (`/api/v1/artist/lookup`) through WebSocket command
+- [x] **SRCH-04**: Search results display poster/avatar thumbnail (from public CDN URLs in response), title, year, and description
+- [x] **SRCH-05**: Arr API keys stay server-side (never exposed to card JavaScript); card uses public CDN image URLs from `remoteUrl`/`remotePoster` fields
 
 ### Requests
 
-- [ ] **REQT-01**: User can request a movie to Radarr with one click (POST `/api/v3/movie` with tmdbId from lookup)
-- [ ] **REQT-02**: User can request a TV series to Sonarr with one click (POST `/api/v3/series` with tvdbId already in lookup response — no TMDB translation needed)
-- [ ] **REQT-03**: User can request a music artist to Lidarr with one click (POST `/api/v1/artist` with foreignArtistId from lookup)
-- [ ] **REQT-04**: Request uses quality profile and root folder from config (not hardcoded)
+- [x] **REQT-01**: User can request a movie to Radarr with one click (POST `/api/v3/movie` with tmdbId from lookup)
+- [x] **REQT-02**: User can request a TV series to Sonarr with one click (POST `/api/v3/series` with tvdbId already in lookup response — no TMDB translation needed)
+- [x] **REQT-03**: User can request a music artist to Lidarr with one click (POST `/api/v1/artist` with foreignArtistId from lookup)
+- [x] **REQT-04**: Request uses quality profile and root folder from config (not hardcoded)
 - [x] **REQT-05**: "Already in library" indicator from arr lookup response (id > 0 means in library)
 
 ### Card UI
 
-- [ ] **CARD-01**: Lovelace card with tabbed interface (Movies / TV / Music)
-- [ ] **CARD-02**: Search input with 300ms debounce (Jellyseerr pattern)
-- [ ] **CARD-03**: Search results: poster-centric list for Movies/TV (2:3 rectangle), text-centric list with circular avatars for Music
-- [ ] **CARD-04**: Request button on each result with visual feedback — green/blue/yellow/red status badge system (Jellyseerr pattern)
+- [x] **CARD-01**: Lovelace card with tabbed interface (Movies / TV / Music)
+- [x] **CARD-02**: Search input with 300ms debounce (Jellyseerr pattern)
+- [x] **CARD-03**: Search results: poster-centric list for Movies/TV (2:3 rectangle), text-centric list with circular avatars for Music
+- [x] **CARD-04**: Request button on each result with visual feedback — green/blue/yellow/red status badge system (Jellyseerr pattern)
 - [x] **CARD-05**: Visual card editor for configuration
 
 ### Distribution (Satisfied by Template)
@@ -99,41 +99,41 @@ Deferred to future release. Tracked but not in current roadmap.
 | SCAF-01 | Template | **Done** |
 | SCAF-02 | Template | **Done** |
 | SCAF-03 | Template | **Done** |
-| CONF-01 | Phase 1 | Pending |
-| CONF-02 | Phase 1 | Pending |
-| CONF-03 | Phase 1 | Pending |
-| CONF-04 | Phase 1 | Pending |
-| CONF-05 | Phase 1 | Pending |
-| SENS-01 | Phase 2 | Pending |
-| SENS-02 | Phase 2 | Pending |
-| SENS-03 | Phase 2 | Pending |
-| SENS-04 | Phase 1 | Pending |
-| SRCH-01 | Phase 2 | Pending |
-| SRCH-02 | Phase 2 | Pending |
-| SRCH-03 | Phase 2 | Pending |
-| SRCH-04 | Phase 2 | Pending |
-| SRCH-05 | Phase 2 | Pending |
-| REQT-01 | Phase 3 | Pending |
-| REQT-02 | Phase 3 | Pending |
-| REQT-03 | Phase 4 | Pending |
-| REQT-04 | Phase 3 | Pending |
-| REQT-05 | Phase 5 | Complete |
-| CARD-01 | Phase 3 | Pending |
-| CARD-02 | Phase 3 | Pending |
-| CARD-03 | Phase 3 | Pending |
-| CARD-04 | Phase 3 | Pending |
-| CARD-05 | Phase 5 | Complete |
+| CONF-01 | Phase 1 | **Done** |
+| CONF-02 | Phase 1 | **Done** |
+| CONF-03 | Phase 1 | **Done** |
+| CONF-04 | Phase 1 | **Done** |
+| CONF-05 | Phase 1 | **Done** |
+| SENS-01 | Phase 2 | **Done** |
+| SENS-02 | Phase 2 | **Done** |
+| SENS-03 | Phase 2 | **Done** |
+| SENS-04 | Phase 1 | **Done** |
+| SRCH-01 | Phase 2 | **Done** |
+| SRCH-02 | Phase 2 | **Done** |
+| SRCH-03 | Phase 2 | **Done** |
+| SRCH-04 | Phase 2 | **Done** |
+| SRCH-05 | Phase 2 | **Done** |
+| REQT-01 | Phase 3 | **Done** |
+| REQT-02 | Phase 3 | **Done** |
+| REQT-03 | Phase 4 | **Done** |
+| REQT-04 | Phase 3 | **Done** |
+| REQT-05 | Phase 5 | **Done** |
+| CARD-01 | Phase 3 | **Done** |
+| CARD-02 | Phase 3 | **Done** |
+| CARD-03 | Phase 3 | **Done** |
+| CARD-04 | Phase 3 | **Done** |
+| CARD-05 | Phase 5 | **Done** |
 | DIST-01 | Template | **Done** |
 | DIST-02 | Template | **Done** |
-| DIST-03 | Phase 5 | Pending |
+| DIST-03 | Template | **Done** |
 
 **Coverage:**
 - v1 requirements: 30 total (was 31; TMDB config requirement removed)
 - Satisfied by template: 6 (SCAF-01/02/03, DIST-01/02/03)
-- Remaining: 24
-- Mapped to phases: 30
+- Completed in phases: 24
+- **Total v1 complete: 30/30**
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-19*
-*Last updated: 2026-02-23 — arr-lookup architecture, removed TMDB/MusicBrainz direct requirements*
+*Last updated: 2026-02-28 — v1 milestone complete, all requirements verified*

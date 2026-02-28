@@ -21,7 +21,7 @@ Requestarr delivers an HA-native media request card in 5 phases. The ha-hacs-tem
 - [x] **Phase 2: Sensors + Search** — Library count sensors, search via arr lookup endpoints through WebSocket
 - [x] **Phase 3: Movie & TV Request** — Radarr movie request, Sonarr TV request (tvdbId in lookup), card Movies/TV tabs (2026-02-27)
 - [x] **Phase 4: Music + Lidarr Request** — Lidarr artist lookup search, Lidarr artist request, card Music tab with circular avatars (2026-02-27)
-- [ ] **Phase 5: Library State + Card Polish + Validation** — "Already in library" badges, card editor, tests, CI
+- [x] **Phase 5: Library State + Card Polish + Validation** — "Already in library" badges, card editor, tests, CI (2026-02-28)
 
 ## Phase Details
 
@@ -112,8 +112,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — In Library badges and card editor (requestarr-card.js)
-- [ ] 05-02-PLAN.md — Test suite rewrite and README documentation
+- [x] 05-01-PLAN.md — In Library badges and card editor (requestarr-card.js)
+- [x] 05-02-PLAN.md — Test suite rewrite and README documentation
 
 ## Progress
 
@@ -126,4 +126,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Sensors + Search | 1/1 | Complete | 2026-02-27 |
 | 3. Movie & TV Request | 2/2 | Complete | 2026-02-27 |
 | 4. Music + Lidarr Request | 1/1 | Complete | 2026-02-27 |
-| 5. Library State + Card Polish + Validation | 0/2 | Not started | - |
+| 5. Library State + Card Polish + Validation | 2/2 | Complete | 2026-02-28 |
