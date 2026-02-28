@@ -70,6 +70,7 @@ WS_TYPE_SEARCH_MUSIC = f"{DOMAIN}/search_music"
 # WebSocket command types — request
 WS_TYPE_REQUEST_MOVIE = f"{DOMAIN}/request_movie"
 WS_TYPE_REQUEST_TV = f"{DOMAIN}/request_series"
+WS_TYPE_REQUEST_ARTIST = f"{DOMAIN}/request_artist"
 
 # Search limits
 MAX_SEARCH_RESULTS = 20
