@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.3.0";
+const CARD_VERSION = "0.4.0";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -105,7 +105,9 @@ class RequestarrCard extends LitElement {
     const type =
       this._activeTab === "movies"
         ? "requestarr/search_movies"
-        : "requestarr/search_tv";
+        : this._activeTab === "tv"
+        ? "requestarr/search_tv"
+        : "requestarr/search_music";
     const seq = ++this._searchSeq;
     this._loading = true;
     try {
@@ -128,7 +130,10 @@ class RequestarrCard extends LitElement {
   // ---------------------------------------------------------------------------
 
   _getItemState(item) {
-    const key = String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
+    const key =
+      item.foreign_artist_id != null
+        ? String(item.foreign_artist_id)
+        : String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
     const reqState = this._requesting[key];
     if (reqState === "requested") return "requested";
     if (!item.in_library) return "not_in_library";
@@ -137,25 +142,37 @@ class RequestarrCard extends LitElement {
   }
 
   async _doRequest(item) {
-    const key = String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
+    const key =
+      item.foreign_artist_id != null
+        ? String(item.foreign_artist_id)
+        : String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
     this._requesting = { ...this._requesting, [key]: "requesting" };
     this._dialogItem = null;
 
-    const isMovie = this._activeTab === "movies";
-    const payload = isMovie
-      ? {
-          type: "requestarr/request_movie",
-          tmdb_id: item.tmdb_id,
-          title: item.title,
-          title_slug: item.title_slug,
-        }
-      : {
-          type: "requestarr/request_series",
-          tvdb_id: item.tvdb_id,
-          title: item.title,
-          title_slug: item.title_slug,
-          seasons: item.seasons || [],
-        };
+    let payload;
+    if (this._activeTab === "movies") {
+      payload = {
+        type: "requestarr/request_movie",
+        tmdb_id: item.tmdb_id,
+        title: item.title,
+        title_slug: item.title_slug,
+      };
+    } else if (this._activeTab === "tv") {
+      payload = {
+        type: "requestarr/request_series",
+        tvdb_id: item.tvdb_id,
+        title: item.title,
+        title_slug: item.title_slug,
+        seasons: item.seasons || [],
+      };
+    } else {
+      // music
+      payload = {
+        type: "requestarr/request_artist",
+        foreign_artist_id: item.foreign_artist_id,
+        title: item.title,
+      };
+    }
 
     try {
       const resp = await this.hass.connection.sendMessagePromise(payload);
@@ -175,6 +192,61 @@ class RequestarrCard extends LitElement {
         [key]: "Connection error",
       };
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Music helpers
+  // ---------------------------------------------------------------------------
+
+  _hashColor(name) {
+    let h = 5381;
+    for (let i = 0; i < name.length; i++) {
+      h = ((h << 5) + h) ^ name.charCodeAt(i);
+      h = h >>> 0;
+    }
+    const palette = [
+      "#E57373", "#F06292", "#BA68C8", "#7986CB",
+      "#4FC3F7", "#4DB6AC", "#81C784", "#FFD54F",
+      "#FF8A65", "#A1887F",
+    ];
+    return palette[h % palette.length];
+  }
+
+  _renderMusicResultRow(item) {
+    const key = String(item.foreign_artist_id);
+    const state = this._getItemState(item);
+    const reqErr = this._requestError[key];
+    const initial = item.title ? item.title[0].toUpperCase() : "?";
+    const color = this._hashColor(item.title || "");
+    return html`
+      <div class="result-row music-result-row">
+        <div class="avatar-wrap">
+          ${item.poster_url
+            ? html`<img
+                class="avatar"
+                src="${item.poster_url}"
+                alt=""
+                @error="${(e) => {
+                  e.target.style.display = "none";
+                }}"
+              />`
+            : ""}
+          <div
+            class="avatar-placeholder"
+            style="background-color: ${color}"
+          >
+            ${initial}
+          </div>
+        </div>
+        <div class="result-info">
+          <span class="result-title">${item.title}</span>
+          ${this._renderStatus(state, item)}
+          ${reqErr
+            ? html`<span class="req-error">${reqErr}</span>`
+            : ""}
+        </div>
+      </div>
+    `;
   }
 
   // ---------------------------------------------------------------------------
@@ -214,7 +286,10 @@ class RequestarrCard extends LitElement {
         >
           TV
         </button>
-        <button class="tab disabled" disabled title="Coming in Phase 4">
+        <button
+          class="tab ${this._activeTab === "music" ? "active" : ""}"
+          @click="${() => this._switchTab("music")}"
+        >
           Music
         </button>
       </div>
@@ -248,7 +323,11 @@ class RequestarrCard extends LitElement {
     }
     return html`
       <div class="results">
-        ${this._results.map((item) => this._renderResultRow(item))}
+        ${this._results.map((item) =>
+          this._activeTab === "music"
+            ? this._renderMusicResultRow(item)
+            : this._renderResultRow(item)
+        )}
       </div>
     `;
   }
@@ -313,7 +392,10 @@ class RequestarrCard extends LitElement {
   _renderDialog() {
     if (!this._dialogItem) return html``;
     const item = this._dialogItem;
-    const key = String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
+    const key =
+      item.foreign_artist_id != null
+        ? String(item.foreign_artist_id)
+        : String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
     const isRequesting = this._requesting[key] === "requesting";
     return html`
       <div
@@ -329,6 +411,9 @@ class RequestarrCard extends LitElement {
           <div class="dialog-title">${item.title}</div>
           <div class="dialog-meta">
             <div>Profile: ${item.quality_profile || "\u2014"}</div>
+            ${this._activeTab === "music" && item.metadata_profile
+              ? html`<div>Metadata: ${item.metadata_profile}</div>`
+              : ""}
             <div>Folder: ${item.root_folder || "\u2014"}</div>
           </div>
           <div class="dialog-actions">
@@ -524,6 +609,39 @@ class RequestarrCard extends LitElement {
       }
       .req-btn:hover:not(:disabled) {
         filter: brightness(1.1);
+      }
+
+      /* Music avatar (circular) */
+      .music-result-row {
+        align-items: center;
+      }
+      .avatar-wrap {
+        position: relative;
+        flex-shrink: 0;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        overflow: hidden;
+        background: var(--secondary-background-color);
+      }
+      .avatar {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+      }
+      .avatar-placeholder {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: white;
       }
 
       /* Confirm dialog */
