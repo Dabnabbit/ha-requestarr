@@ -268,6 +268,42 @@ class ArrClient:
         }
         return await self._request("POST", "/series", json=payload)
 
+    async def async_request_artist(
+        self,
+        foreign_artist_id: str,
+        quality_profile_id: int,
+        metadata_profile_id: int,
+        root_folder_path: str,
+    ) -> dict[str, Any]:
+        """Add an artist to Lidarr.
+
+        Args:
+            foreign_artist_id: MusicBrainz artist GUID (string UUID).
+            quality_profile_id: Quality profile ID from config entry.
+            metadata_profile_id: Metadata profile ID from config entry (Lidarr-specific).
+            root_folder_path: Root folder path from config entry.
+
+        Returns:
+            Parsed JSON response from Lidarr.
+
+        Raises:
+            CannotConnectError: Cannot reach Lidarr.
+            InvalidAuthError: API key rejected.
+            ServerError: Non-auth HTTP error. HTTP 400 means artist already exists.
+        """
+        payload = {
+            "foreignArtistId": foreign_artist_id,        # string UUID — DO NOT cast to int
+            "qualityProfileId": int(quality_profile_id),
+            "metadataProfileId": int(metadata_profile_id),
+            "rootFolderPath": root_folder_path,
+            "monitored": True,
+            "addOptions": {
+                "searchForMissingAlbums": True,
+                "monitor": "all",
+            },
+        }
+        return await self._request("POST", "/artist", json=payload)
+
     async def async_get_library_count(self) -> int:
         """Fetch the total number of items in the library.
 
