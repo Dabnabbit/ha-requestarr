@@ -10,24 +10,20 @@ import pytest
 
 # ---------------------------------------------------------------------------
 # Compatibility shim for pytest-homeassistant-custom-component 0.13.205
-# bundling HA 2025.1.4, which predates async_register_static_paths (HA 2025.7).
-# We inject the missing symbols before anything imports the integration.
+# bundling HA 2025.1.4, which predates StaticPathConfig (added in HA 2025.7).
+# We inject the missing symbol before anything imports the integration.
 # ---------------------------------------------------------------------------
 import sys
 
 _http_mod = sys.modules.get("homeassistant.components.http")
-if _http_mod is not None and not hasattr(_http_mod, "async_register_static_paths"):
+if _http_mod is not None and not hasattr(_http_mod, "StaticPathConfig"):
     @dataclass
     class _StaticPathConfig:
         url: str
         path: str
         cache_headers: bool = True
 
-    async def _async_register_static_paths(hass, configs):
-        pass
-
     _http_mod.StaticPathConfig = _StaticPathConfig
-    _http_mod.async_register_static_paths = _async_register_static_paths
 
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry

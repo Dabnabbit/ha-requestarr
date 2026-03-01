@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.6.7";
+const CARD_VERSION = "0.7.0";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -468,35 +468,44 @@ class RequestarrCard extends LitElement {
     return null;
   }
 
-  _renderTabs() {
-    const showMovies = this.config.show_radarr !== false;
-    const showTV = this.config.show_sonarr !== false;
-    const showMusic = this.config.show_lidarr !== false;
+  _getServiceStatus(service) {
+    if (!this.hass) return null;
+    const entity = this.hass.states[`sensor.requestarr_${service}`];
+    if (!entity) return null;
+    return entity.state; // "connected" | "disconnected" | "error"
+  }
 
-    if (!showMovies && !showTV && !showMusic) {
-      return html`<div class="tabs"><span class="tab">No services enabled</span></div>`;
+  _renderTabs() {
+    const tabs = [
+      { key: "movies", show: this.config.show_radarr !== false, icon: "mdi:movie", label: "Movies", service: "radarr" },
+      { key: "tv", show: this.config.show_sonarr !== false, icon: "mdi:television", label: "TV Shows", service: "sonarr" },
+      { key: "music", show: this.config.show_lidarr !== false, icon: "mdi:music", label: "Music", service: "lidarr" },
+    ];
+    const visible = tabs.filter((t) => t.show);
+
+    if (visible.length === 0) {
+      return html`<div class="nav-bar"><span class="nav-hint">No services enabled</span></div>`;
     }
 
     return html`
-      <div class="tabs">
-        ${showMovies ? html`<button
-          class="tab ${this._activeTab === "movies" ? "active" : ""}"
-          @click="${() => this._switchTab("movies")}"
-        >
-          Movies
-        </button>` : ""}
-        ${showTV ? html`<button
-          class="tab ${this._activeTab === "tv" ? "active" : ""}"
-          @click="${() => this._switchTab("tv")}"
-        >
-          TV
-        </button>` : ""}
-        ${showMusic ? html`<button
-          class="tab ${this._activeTab === "music" ? "active" : ""}"
-          @click="${() => this._switchTab("music")}"
-        >
-          Music
-        </button>` : ""}
+      <div class="nav-bar">
+        ${visible.map((t) => {
+          const status = this._getServiceStatus(t.service);
+          return html`
+            <button
+              class="nav-btn ${this._activeTab === t.key ? "active" : ""}"
+              title="${t.label}"
+              @click="${() => this._switchTab(t.key)}"
+            >
+              <div class="nav-icon-wrap">
+                <ha-icon icon="${t.icon}"></ha-icon>
+                ${status
+                  ? html`<span class="status-dot status-${status}"></span>`
+                  : ""}
+              </div>
+            </button>
+          `;
+        })}
       </div>
     `;
   }
@@ -748,35 +757,73 @@ class RequestarrCard extends LitElement {
         overflow: hidden;
       }
 
-      /* Tabs */
-      .tabs {
+      /* Nav bar */
+      .nav-bar {
         display: flex;
-        gap: 4px;
-        padding: 12px 0 8px;
+        justify-content: center;
+        gap: 0;
+        padding: 8px 0;
         border-bottom: 1px solid var(--divider-color);
         margin-bottom: 12px;
+        background: var(--secondary-background-color);
+        border-radius: 12px;
       }
-      .tab {
+      .nav-hint {
+        font-size: 0.8rem;
+        color: var(--secondary-text-color);
+        padding: 8px 16px;
+      }
+      .nav-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         background: none;
         border: none;
-        padding: 6px 14px;
-        border-radius: 16px;
+        padding: 8px 0;
         cursor: pointer;
-        font-size: 0.875rem;
-        font-weight: 500;
         color: var(--secondary-text-color);
-        transition: background 0.15s, color 0.15s;
+        transition: color 0.15s, background 0.15s;
+        border-radius: 12px;
+        position: relative;
       }
-      .tab.active {
-        background: var(--primary-color);
-        color: white;
+      .nav-btn.active {
+        color: var(--primary-color);
+        background: var(--card-background-color, var(--ha-card-background, white));
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
       }
-      .tab:hover:not(.active):not(.disabled) {
-        background: var(--secondary-background-color);
+      .nav-btn:hover:not(.active) {
+        color: var(--primary-text-color);
       }
-      .tab.disabled {
-        opacity: 0.4;
-        cursor: default;
+      .nav-btn ha-icon {
+        --mdc-icon-size: 22px;
+      }
+      .nav-icon-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .status-dot {
+        position: absolute;
+        top: -3px;
+        right: -5px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: 2px solid var(--secondary-background-color);
+      }
+      .nav-btn.active .status-dot {
+        border-color: var(--card-background-color, var(--ha-card-background, white));
+      }
+      .status-connected {
+        background: #4caf50;
+      }
+      .status-error {
+        background: var(--error-color, #f44336);
+      }
+      .status-disconnected {
+        background: #9e9e9e;
       }
 
       /* Search */
@@ -1196,9 +1243,9 @@ class RequestarrCardEditor extends LitElement {
   render() {
     if (!this.config || !this.hass) return html``;
     const services = [
-      { id: "radarr", label: "Show Radarr tab", key: "show_radarr" },
-      { id: "sonarr", label: "Show Sonarr tab", key: "show_sonarr" },
-      { id: "lidarr", label: "Show Lidarr tab", key: "show_lidarr" },
+      { id: "radarr", label: "Show Movies (Radarr)", key: "show_radarr" },
+      { id: "sonarr", label: "Show TV (Sonarr)", key: "show_sonarr" },
+      { id: "lidarr", label: "Show Music (Lidarr)", key: "show_lidarr" },
     ];
     const configuredServices = services.filter((s) =>
       this._isServiceConfigured(s.id)

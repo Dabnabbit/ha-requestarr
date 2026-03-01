@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from homeassistant.components.http import StaticPathConfig, async_register_static_paths
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -57,15 +57,14 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Requestarr integration."""
     frontend_path = Path(__file__).parent / "frontend"
     try:
-        await async_register_static_paths(
-            hass,
+        await hass.http.async_register_static_paths(
             [
                 StaticPathConfig(
                     FRONTEND_SCRIPT_URL,
                     str(frontend_path / f"{DOMAIN}-card.js"),
                     cache_headers=True,
                 )
-            ],
+            ]
         )
     except RuntimeError:
         # Path already registered — happens on reload

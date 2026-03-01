@@ -94,9 +94,37 @@ The ha-hacs-template v1.0 overlay satisfies:
 - [2026-02-28]: **CARD_VERSION 0.5.0** — final v1 card version
 - [2026-02-28]: **Tech debt resolved** — show_* toggles wired to _renderTabs(), iot_class→local_polling, pytest CI job added, orphan binary_sensor.py removed, Phase 1 VERIFICATION.md created
 
+### Deployment
+
+Deploy to Fathom Docker LXC via rsync (WSL2 → LXC at 192.168.50.110):
+
+```bash
+rsync -av custom_components/requestarr/ root@192.168.50.110:/opt/homeassistant/config/custom_components/requestarr/
+```
+
+**First install:** full HA restart required (Settings → System → Restart)
+**Subsequent deploys:** reload integration only (Settings → Devices & Services → Requestarr → ⋮ → Reload); card JS changes also require browser hard-refresh (Ctrl+Shift+R)
+
+**E2E test checklist (manual UAT against live arr services):**
+1. Settings → Devices & Services → Add Integration → Requestarr
+2. Step 1: Enter Radarr URL + API key → validate → auto-advance
+3. Step 2: Enter Sonarr URL + API key → validate → auto-advance
+4. Step 3: Enter Lidarr URL + API key → validate → finish
+5. Verify 3 sensors appear: radarr_status, sonarr_status, lidarr_status
+6. Add Requestarr card to a dashboard
+7. Search a movie → verify poster results → request one → confirm appears in Radarr
+8. Search a TV show → request one → confirm appears in Sonarr
+9. Search an artist → request one → confirm appears in Lidarr
+10. Verify "In Library" green badge on already-owned items
+11. Verify disabled "In Library" button (not re-requestable)
+12. Open card editor → toggle show_movies/show_tv/show_music → verify tabs hide/show
+13. Change card title → verify updates in card header
+
 ### Pending Todos
 
-None — v1 milestone complete.
+- Deploy via rsync to Fathom LXC (command above)
+- Run E2E test checklist against live Radarr/Sonarr/Lidarr
+- After UAT passes: run /gsd:complete-milestone v1.0 to archive
 
 ### Blockers/Concerns
 
@@ -104,7 +132,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-28
-Stopped at: v1 milestone audit passed (30/30), all tech debt resolved
+Last session: 2026-03-01
+Stopped at: Post-v1 enhancements (seasons/albums, already_exists, nav bar redesign WIP). HA migrated from QNAP to Fathom LXC (192.168.50.110). SSH key auth established.
 Resume file: None
-Resume action: Run /gsd:complete-milestone v1.0 to archive, then HACS submission or v2 planning
+Resume action: Finish nav bar redesign, deploy via rsync to Fathom LXC, run E2E checklist, then /gsd:complete-milestone v1.0
