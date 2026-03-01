@@ -491,18 +491,14 @@ class RequestarrCard extends LitElement {
       <div class="nav-bar">
         ${visible.map((t) => {
           const status = this._getServiceStatus(t.service);
+          const statusClass = status ? `status-${status}` : "";
           return html`
             <button
-              class="nav-btn ${this._activeTab === t.key ? "active" : ""}"
-              title="${t.label}"
+              class="nav-btn ${this._activeTab === t.key ? "active" : ""} ${statusClass}"
+              title="${t.label}${status ? ` (${status})` : ""}"
               @click="${() => this._switchTab(t.key)}"
             >
-              <div class="nav-icon-wrap">
-                <ha-icon icon="${t.icon}"></ha-icon>
-                ${status
-                  ? html`<span class="status-dot status-${status}"></span>`
-                  : ""}
-              </div>
+              <ha-icon icon="${t.icon}"></ha-icon>
             </button>
           `;
         })}
@@ -798,32 +794,17 @@ class RequestarrCard extends LitElement {
       .nav-btn ha-icon {
         --mdc-icon-size: 22px;
       }
-      .nav-icon-wrap {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      .nav-btn.status-connected {
+        color: #4caf50;
       }
-      .status-dot {
-        position: absolute;
-        top: -3px;
-        right: -5px;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        border: 2px solid var(--secondary-background-color);
+      .nav-btn.status-connected.active {
+        color: #4caf50;
       }
-      .nav-btn.active .status-dot {
-        border-color: var(--card-background-color, var(--ha-card-background, white));
+      .nav-btn.status-error {
+        color: var(--error-color, #f44336);
       }
-      .status-connected {
-        background: #4caf50;
-      }
-      .status-error {
-        background: var(--error-color, #f44336);
-      }
-      .status-disconnected {
-        background: #9e9e9e;
+      .nav-btn.status-disconnected {
+        color: #9e9e9e;
       }
 
       /* Search */

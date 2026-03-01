@@ -96,11 +96,16 @@ The ha-hacs-template v1.0 overlay satisfies:
 
 ### Deployment
 
-Deploy to Fathom Docker LXC via rsync (WSL2 → LXC at 192.168.50.110):
+Deploy to Fathom Docker LXC via scp (WSL2 → LXC at 192.168.50.110):
 
 ```bash
-rsync -av custom_components/requestarr/ root@192.168.50.110:/opt/homeassistant/config/custom_components/requestarr/
+DOMAIN=requestarr DEST=root@192.168.50.110:/opt/homeassistant/config/custom_components/$DOMAIN && \
+scp custom_components/$DOMAIN/*.py custom_components/$DOMAIN/*.json custom_components/$DOMAIN/*.yaml $DEST/ && \
+scp custom_components/$DOMAIN/frontend/*-card.js $DEST/frontend/ && \
+scp custom_components/$DOMAIN/translations/*.json $DEST/translations/
 ```
+
+Note: `scp -r` nests directories instead of overwriting — use flat file copies above.
 
 **First install:** full HA restart required (Settings → System → Restart)
 **Subsequent deploys:** reload integration only (Settings → Devices & Services → Requestarr → ⋮ → Reload); card JS changes also require browser hard-refresh (Ctrl+Shift+R)
