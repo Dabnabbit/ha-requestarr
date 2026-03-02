@@ -36,7 +36,6 @@ class RequestarrCard extends LitElement {
       _albumCache: { type: Object },
       _albumLoading: { type: Object },
       _queueData: { type: Array },
-      _activityExpanded: { type: Boolean },
     };
   }
 
@@ -54,7 +53,6 @@ class RequestarrCard extends LitElement {
     this._albumCache = {};
     this._albumLoading = {};
     this._queueData = [];
-    this._activityExpanded = false;
     this._queueTimer = null;
     this._debounceTimer = null;
     this._searchSeq = 0;
@@ -121,6 +119,7 @@ class RequestarrCard extends LitElement {
   _switchTab(tab) {
     if (this._activeTab === tab) return;
     this._activeTab = tab;
+    if (tab === "downloads") return; // no search needed for queue view
     this._results = [];
     if (this._query.length >= 2) {
       clearTimeout(this._debounceTimer);
@@ -504,7 +503,11 @@ class RequestarrCard extends LitElement {
     return html`
       <ha-card header="${this.config.header || ""}">
         <div class="card-content">
-          ${this._renderTabs()} ${this._renderSearch()} ${this._renderResults()}
+          ${this._renderTabs()}
+          ${this._activeTab === "downloads"
+            ? this._renderQueueView()
+            : html`${this._renderSearch()} ${this._renderResults()}`
+          }
         </div>
         ${this._renderDialog()}
       </ha-card>
@@ -538,52 +541,56 @@ class RequestarrCard extends LitElement {
     }
 
     const queueCount = this._queueData ? this._queueData.length : 0;
-    const svcIcon = { radarr: "mdi:movie", sonarr: "mdi:television", lidarr: "mdi:music" };
 
     return html`
-      <div class="nav-wrap">
-        <div class="nav-bar">
-          ${visible.map((t) => {
-            const status = this._getServiceStatus(t.service);
-            const statusClass = status ? `status-${status}` : "";
-            return html`
-              <button
-                class="nav-btn ${this._activeTab === t.key ? "active" : ""} ${statusClass}"
-                title="${t.label}${status ? ` (${status})` : ""}"
-                @click="${() => this._switchTab(t.key)}"
-              >
-                <ha-icon icon="${t.icon}"></ha-icon>
-              </button>
-            `;
-          })}
-          ${queueCount > 0 ? html`
+      <div class="nav-bar">
+        ${visible.map((t) => {
+          const status = this._getServiceStatus(t.service);
+          const statusClass = status ? `status-${status}` : "";
+          return html`
             <button
-              class="nav-btn nav-btn-queue ${this._activityExpanded ? "active" : ""}"
-              title="Downloads (${queueCount})"
-              @click="${() => { this._activityExpanded = !this._activityExpanded; }}"
+              class="nav-btn ${this._activeTab === t.key ? "active" : ""} ${statusClass}"
+              title="${t.label}${status ? ` (${status})` : ""}"
+              @click="${() => this._switchTab(t.key)}"
             >
-              <ha-icon icon="mdi:download"></ha-icon>
-              <span class="queue-badge">${queueCount}</span>
+              <ha-icon icon="${t.icon}"></ha-icon>
             </button>
-          ` : ""}
-        </div>
-        ${this._activityExpanded && queueCount > 0 ? html`
-          <div class="activity-list">
-            ${this._queueData.map((q) => html`
-              <div class="activity-item">
-                <ha-icon icon="${svcIcon[q.service] || "mdi:download"}" class="activity-svc-icon"></ha-icon>
-                <div class="activity-item-info">
-                  <span class="activity-item-title">${q.title}</span>
-                  <div class="activity-progress-bar">
-                    <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
-                  </div>
-                </div>
-                <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
-                ${q.timeleft ? html`<span class="activity-item-eta">${q.timeleft}</span>` : ""}
-              </div>
-            `)}
-          </div>
+          `;
+        })}
+        ${queueCount > 0 ? html`
+          <button
+            class="nav-btn nav-btn-queue ${this._activeTab === "downloads" ? "active" : ""}"
+            title="Downloads (${queueCount})"
+            @click="${() => this._switchTab("downloads")}"
+          >
+            <ha-icon icon="mdi:download"></ha-icon>
+            <span class="queue-badge">${queueCount}</span>
+          </button>
         ` : ""}
+      </div>
+    `;
+  }
+
+  _renderQueueView() {
+    if (!this._queueData || this._queueData.length === 0) {
+      return html`<div class="empty">No active downloads</div>`;
+    }
+    const svcIcon = { radarr: "mdi:movie", sonarr: "mdi:television", lidarr: "mdi:music" };
+    return html`
+      <div class="queue-view">
+        ${this._queueData.map((q) => html`
+          <div class="activity-item">
+            <ha-icon icon="${svcIcon[q.service] || "mdi:download"}" class="activity-svc-icon"></ha-icon>
+            <div class="activity-item-info">
+              <span class="activity-item-title">${q.title}</span>
+              <div class="activity-progress-bar">
+                <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
+              </div>
+            </div>
+            <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
+            ${q.timeleft ? html`<span class="activity-item-eta">${q.timeleft}</span>` : ""}
+          </div>
+        `)}
       </div>
     `;
   }
@@ -837,20 +844,16 @@ class RequestarrCard extends LitElement {
         overflow: hidden;
       }
 
-      /* Nav wrap — bar + expandable activity list */
-      .nav-wrap {
-        margin-bottom: 12px;
-        border-radius: 12px;
-        overflow: hidden;
-        background: var(--secondary-background-color);
-      }
-
       /* Nav bar */
       .nav-bar {
         display: flex;
         justify-content: center;
         gap: 0;
         padding: 8px 0;
+        border-bottom: 1px solid var(--divider-color);
+        margin-bottom: 12px;
+        background: var(--secondary-background-color);
+        border-radius: 12px;
       }
       .nav-hint {
         font-size: 0.8rem;
@@ -1300,11 +1303,15 @@ class RequestarrCard extends LitElement {
         letter-spacing: 0.03em;
       }
 
-      /* Activity list (inside nav-wrap) */
-      .activity-list {
-        border-top: 1px solid var(--divider-color);
+      /* Queue view (replaces search+results) */
+      .queue-view {
         display: flex;
         flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--divider-color) transparent;
       }
       .activity-item {
         display: flex;
