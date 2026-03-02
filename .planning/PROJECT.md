@@ -32,17 +32,26 @@ Users can search for media and submit requests to their arr stack from a single 
 - [ ] HACS-compatible distribution validation (hassfest + hacs/action CI) — Phase 5
 - [ ] Per-user request context via HA user identity — Phase 5 (deferred if complexity high)
 
+### v2 — Series Lifecycle + Display Features
+
+- [ ] **Series lifecycle: Archive** — delete files from disk but keep entry in Sonarr/Radarr (unmonitored). Frees real disk space. Sonarr: `DELETE /api/v3/episodefile/{id}` per file + set series `monitored: false`, store per-season monitored state for later restore. Radarr: `DELETE /api/v3/moviefile/{id}` + `monitored: false`.
+- [ ] **Series lifecycle: Load/Re-request** — re-monitor an archived series and trigger search to re-download. Must handle indexer rate limiting gracefully (stagger season searches, show progress, don't hammer all at once). Only re-monitor seasons that were monitored before archiving (preserve user's existing monitoring choices). Sonarr: restore per-season monitored state, then `POST /api/v3/command` with `SeriesSearch`.
+- [ ] **Library state display** — show series/movie status in card: "On disk" (has files), "Archived" (in arr but no files, unmonitored), "Downloading" (in queue), "Missing" (monitored but no files)
+- [ ] **Archive confirmation** — "Are you sure? This will delete X GB of files" with size info from arr API (`sizeOnDisk` from series/movie endpoint)
+- [ ] **Disk space indicator** — show root folder free space so users know capacity before loading series
+- [ ] Now-playing / currently-streaming display (absorb Mediarr features)
+- [ ] Upcoming releases calendar
+- [ ] Recently added media
+- [ ] Album-level music requests (v1 uses artist-level "monitor all")
+- [ ] Season-level TV request granularity (v1 requests full series)
+
 ### Out of Scope
 
-- Now-playing / currently-streaming display — deferred to v2 (absorb Mediarr features)
-- Upcoming releases calendar — deferred to v2
-- Recently added media — deferred to v2
-- Discover/trending browse — deferred to v2 (Jellyseerr has this but it's high complexity)
-- Album-level music requests — deferred to v2 (v1 uses artist-level "monitor all")
+- Discover/trending browse — deferred (Jellyseerr has this but it's high complexity)
 - Per-user quotas and approval workflows — deferred to v3
 - Python backend for state persistence — deferred to v3
 - Request history and analytics — deferred to v3
-- Season-level TV request granularity — deferred to v2 (v1 requests full series)
+- Cold storage archive — compress + move to external/slow drive instead of deleting; restore from local before falling back to re-download. Requires hardware (external drive on QNAP). Revisit if/when cold storage is available.
 - Mobile-specific native app — HA mobile app handles this
 - Plex integration — Jellyfin-only household
 - Direct TMDB/MusicBrainz API calls — arr lookup endpoints provide superset of needed data
