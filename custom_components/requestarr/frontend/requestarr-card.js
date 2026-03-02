@@ -602,13 +602,17 @@ class RequestarrCard extends LitElement {
       <div class="queue-view">
         ${items.map((q) => html`
           <div class="activity-item">
-            <ha-icon icon="${svcIcon[q.service] || "mdi:download"}" class="activity-svc-icon"></ha-icon>
-            <span class="activity-item-title">${q.title}</span>
-            <div class="activity-progress-bar">
-              <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
+            <div class="activity-row-top">
+              <ha-icon icon="${svcIcon[q.service] || "mdi:download"}" class="activity-svc-icon"></ha-icon>
+              <span class="activity-item-title">${q.title}</span>
+              <span class="activity-item-eta">${q.timeleft || "—"}</span>
             </div>
-            <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
-            <span class="activity-item-eta">${q.timeleft || "—"}</span>
+            <div class="activity-row-bottom">
+              <div class="activity-progress-bar">
+                <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
+              </div>
+              <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
+            </div>
           </div>
         `)}
       </div>
@@ -1314,28 +1318,45 @@ class RequestarrCard extends LitElement {
         scrollbar-color: var(--divider-color) transparent;
       }
       .activity-item {
-        display: grid;
-        grid-template-columns: 20px 1fr 80px 36px 64px;
-        align-items: center;
-        gap: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
         padding: 8px 12px;
         border-bottom: 1px solid var(--divider-color);
       }
       .activity-item:last-child {
         border-bottom: none;
       }
+      .activity-row-top {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
       .activity-svc-icon {
         --mdc-icon-size: 16px;
         color: var(--secondary-text-color);
+        flex-shrink: 0;
       }
       .activity-item-title {
+        flex: 1;
         font-size: 0.8rem;
         color: var(--primary-text-color);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .activity-item-eta {
+        font-size: 0.7rem;
+        color: var(--secondary-text-color);
+        flex-shrink: 0;
+      }
+      .activity-row-bottom {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
       .activity-progress-bar {
+        flex: 1;
         height: 6px;
         background: var(--divider-color);
         border-radius: 3px;
@@ -1351,11 +1372,8 @@ class RequestarrCard extends LitElement {
         font-size: 0.75rem;
         font-weight: 600;
         color: var(--primary-text-color);
-        text-align: right;
-      }
-      .activity-item-eta {
-        font-size: 0.7rem;
-        color: var(--secondary-text-color);
+        flex-shrink: 0;
+        min-width: 32px;
         text-align: right;
       }
 
