@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.10.0";
+const CARD_VERSION = "0.11.1";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,

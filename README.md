@@ -44,6 +44,10 @@ For each service, provide:
 
 Quality profiles, root folders, and (for Lidarr) metadata profiles are fetched automatically at setup time.
 
+### Reconfigure
+
+If your arr services move to a new IP or you need to change URLs/API keys, go to **Settings → Devices & Services → Requestarr → ⋮ → Reconfigure**. The wizard re-runs pre-filled with your current values.
+
 ### Options
 
 After setup, go to **Settings → Devices & Services → Requestarr → Configure** to:

@@ -176,6 +176,7 @@ class RequestarrConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize the config flow."""
         self._data: dict[str, Any] = {}
+        self._is_reconfigure: bool = False
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -232,9 +233,12 @@ class RequestarrConfigFlow(ConfigFlow, domain=DOMAIN):
                     ]
                     return await self.async_step_sonarr()
 
+        schema = STEP_RADARR_SCHEMA
+        if self._is_reconfigure:
+            schema = self.add_suggested_values_to_schema(schema, self._data)
         return self.async_show_form(
             step_id="radarr",
-            data_schema=STEP_RADARR_SCHEMA,
+            data_schema=schema,
             errors=errors,
             description_placeholders={
                 "url_example": "http://192.168.1.50:7878"
@@ -290,9 +294,12 @@ class RequestarrConfigFlow(ConfigFlow, domain=DOMAIN):
                     ]
                     return await self.async_step_lidarr()
 
+        schema = STEP_SONARR_SCHEMA
+        if self._is_reconfigure:
+            schema = self.add_suggested_values_to_schema(schema, self._data)
         return self.async_show_form(
             step_id="sonarr",
-            data_schema=STEP_SONARR_SCHEMA,
+            data_schema=schema,
             errors=errors,
             description_placeholders={
                 "url_example": "http://192.168.1.50:8989"
@@ -360,9 +367,12 @@ class RequestarrConfigFlow(ConfigFlow, domain=DOMAIN):
                         ]
                         return await self._create_entry()
 
+        schema = STEP_LIDARR_SCHEMA
+        if self._is_reconfigure:
+            schema = self.add_suggested_values_to_schema(schema, self._data)
         return self.async_show_form(
             step_id="lidarr",
-            data_schema=STEP_LIDARR_SCHEMA,
+            data_schema=schema,
             errors=errors,
             description_placeholders={
                 "url_example": "http://192.168.1.50:8686"
@@ -370,7 +380,13 @@ class RequestarrConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def _create_entry(self) -> ConfigFlowResult:
-        """Create the config entry after all steps are complete."""
+        """Create or update the config entry after all steps are complete."""
+        if self._is_reconfigure:
+            entry = self._get_reconfigure_entry()
+            return self.async_update_reload_and_abort(
+                entry, data=self._data
+            )
+
         # Singleton integration — only one instance allowed
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
@@ -384,8 +400,8 @@ class RequestarrConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle reconfiguration — re-run wizard with current values."""
-        # Pre-fill self._data with current config entry values
-        self._data = dict(self.config_entry.data)
+        self._is_reconfigure = True
+        self._data = dict(self._get_reconfigure_entry().data)
         return await self.async_step_radarr()
 
 
