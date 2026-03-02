@@ -857,23 +857,27 @@ def _normalize_queue_item(item: dict[str, Any], service_type: str) -> dict[str, 
     sizeleft = item.get("sizeleft", 0)
     progress = round((1 - sizeleft / size) * 100, 1) if size > 0 else 0.0
 
-    # Radarr: item.movie.id, Sonarr: item.seriesId or item.series.id, Lidarr: item.artistId or item.artist.id
+    # Extract media_id and human-readable title from nested objects.
+    # The top-level "title" is the release/torrent name, not the media title.
     if service_type == SERVICE_RADARR:
-        media_id = (item.get("movie") or {}).get("id")
-        title = item.get("title", "") or (item.get("movie") or {}).get("title", "")
+        movie = item.get("movie") or {}
+        media_id = movie.get("id") or item.get("movieId")
+        title = movie.get("title", "") or item.get("title", "")
     elif service_type == SERVICE_SONARR:
-        media_id = item.get("seriesId") or (item.get("series") or {}).get("id")
-        title = item.get("title", "") or (item.get("series") or {}).get("title", "")
+        series = item.get("series") or {}
+        media_id = item.get("seriesId") or series.get("id")
+        title = series.get("title", "") or item.get("title", "")
     else:
-        media_id = item.get("artistId") or (item.get("artist") or {}).get("id")
-        title = item.get("title", "") or (item.get("artist") or {}).get("artistName", "")
+        artist = item.get("artist") or {}
+        media_id = item.get("artistId") or artist.get("id")
+        title = artist.get("artistName", "") or item.get("title", "")
 
     return {
         "title": title,
         "service": service_type,
         "media_id": media_id,
         "progress": progress,
-        "timeleft": item.get("timeleft", ""),
+        "timeleft": item.get("timeleft") or "",
         "status": item.get("status", ""),
         "queue_id": item.get("id"),
     }

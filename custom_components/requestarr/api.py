@@ -470,12 +470,20 @@ class ArrClient:
     async def async_get_queue(self) -> list[dict[str, Any]]:
         """Fetch the download queue from the arr service.
 
+        Includes nested media objects (movie/series/artist) for readable titles.
+
         Returns:
             List of queue record dicts from the arr API.
         """
-        data = await self._request(
-            "GET", "/queue", params={"pageSize": QUEUE_PAGE_SIZE}
-        )
+        # Each service needs its own include params for nested media objects
+        include_params = {
+            "radarr": {"includeMovie": "true"},
+            "sonarr": {"includeSeries": "true"},
+            "lidarr": {"includeArtist": "true", "includeAlbum": "true"},
+        }
+        params = {"pageSize": QUEUE_PAGE_SIZE}
+        params.update(include_params.get(self._service_type, {}))
+        data = await self._request("GET", "/queue", params=params)
         if isinstance(data, dict):
             return data.get("records", [])
         return []
