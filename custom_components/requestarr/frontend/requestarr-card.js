@@ -406,15 +406,21 @@ class RequestarrCard extends LitElement {
           const reqState = this._requesting[reqKey];
           const isRequesting = reqState === "requesting";
           const isRequested = reqState === "requested";
-          const isInLib = reqState === "in_library" || album.in_library || album.monitored;
+          const isInLib = reqState === "in_library" || album.in_library;
           const reqErr = this._requestError[reqKey];
+          const trackInfo =
+            album.total_track_count > 0
+              ? `${album.track_file_count}/${album.total_track_count} tracks`
+              : null;
           return html`
             <div class="sub-row">
               <div class="sub-row-left">
                 <span class="sub-row-label">${album.title}</span>
-                ${album.year
-                  ? html`<span class="sub-row-meta">${album.year}</span>`
-                  : ""}
+                <span class="sub-row-meta">
+                  ${album.year ? html`${album.year}` : ""}
+                  ${album.year && trackInfo ? html` · ` : ""}
+                  ${trackInfo ? html`${trackInfo}` : ""}
+                </span>
               </div>
               <div class="sub-row-actions">
                 ${reqErr

@@ -378,23 +378,34 @@ class ArrClient:
         Returns:
             List of album dicts with title, year, foreign_album_id, monitored, in_library.
         """
-        if arr_id:
+        from_library = bool(arr_id)
+        if from_library:
             items = await self._request("GET", "/album", params={"artistId": arr_id})
         else:
             items = await self._request(
                 "GET", "/album/lookup", params={"term": f"lidarr:{foreign_artist_id}"}
             )
-        return [
-            {
+        result = []
+        for item in items if isinstance(items, list) else []:
+            fid = item.get("foreignAlbumId") or item.get("foreignId")
+            if not fid:
+                continue
+            stats = item.get("statistics") or {}
+            track_file_count = stats.get("trackFileCount", 0)
+            total_track_count = stats.get("totalTrackCount", 0)
+            # Library endpoint: album has actual downloaded tracks
+            # Lookup endpoint: id > 0 means it's tracked in library
+            in_library = track_file_count > 0 if from_library else item.get("id", 0) > 0
+            result.append({
                 "title": item.get("title", ""),
                 "year": item.get("releaseDate", "")[:4] if item.get("releaseDate") else None,
-                "foreign_album_id": item.get("foreignAlbumId") or item.get("foreignId"),
+                "foreign_album_id": fid,
                 "monitored": item.get("monitored", False),
-                "in_library": item.get("id", 0) > 0,
-            }
-            for item in (items if isinstance(items, list) else [])
-            if item.get("foreignAlbumId") or item.get("foreignId")
-        ]
+                "in_library": in_library,
+                "track_file_count": track_file_count,
+                "total_track_count": total_track_count,
+            })
+        return result
 
     async def async_request_album(
         self,
