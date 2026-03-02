@@ -533,6 +533,22 @@ class ArrClient:
             return data.get("records", [])
         return []
 
+    async def async_delete_queue_item(
+        self, queue_id: int, *, remove_from_client: bool = True, blocklist: bool = False
+    ) -> None:
+        """Delete an item from the download queue.
+
+        Args:
+            queue_id: The queue item ID from the arr service.
+            remove_from_client: Also remove from download client (e.g. qBittorrent).
+            blocklist: Add the release to the blocklist.
+        """
+        params = {
+            "removeFromClient": str(remove_from_client).lower(),
+            "blocklist": str(blocklist).lower(),
+        }
+        await self._request("DELETE", f"/queue/{queue_id}", params=params)
+
     async def async_get_library_count(self) -> int:
         """Fetch the total number of items in the library.
 

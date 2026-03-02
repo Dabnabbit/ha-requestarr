@@ -245,6 +245,39 @@ class RequestarrCard extends LitElement {
   }
 
   // ---------------------------------------------------------------------------
+  // Queue management
+  // ---------------------------------------------------------------------------
+
+  async _deleteQueueItem(queueId, service) {
+    try {
+      await this.hass.connection.sendMessagePromise({
+        type: "requestarr/delete_queue_item",
+        queue_id: queueId,
+        service,
+      });
+      this._queueData = this._queueData.filter((q) => q.queue_id !== queueId);
+    } catch (_err) {
+      // silently ignore
+    }
+  }
+
+  async _clearCompleted() {
+    const completed = this._queueData.filter((q) => q.progress >= 100);
+    if (!completed.length) return;
+    if (!confirm(`Remove ${completed.length} completed download${completed.length > 1 ? "s" : ""} from queue?`)) return;
+    await Promise.all(completed.map((q) => this._deleteQueueItem(q.queue_id, q.service)));
+  }
+
+  _confirmDeleteQueueItem(q) {
+    const msg = q.progress >= 100
+      ? `Remove "${q.title}" from queue?`
+      : `Cancel download of "${q.title}"?`;
+    if (confirm(msg)) {
+      this._deleteQueueItem(q.queue_id, q.service);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Request
   // ---------------------------------------------------------------------------
 
@@ -648,17 +681,30 @@ class RequestarrCard extends LitElement {
       return html`<div class="empty">No downloads matching "${this._query}"</div>`;
     }
     const svcIcon = { radarr: "mdi:movie", sonarr: "mdi:television", lidarr: "mdi:music" };
+    const hasCompleted = items.some((q) => q.progress >= 100);
     return html`
       <div class="queue-view">
+        ${hasCompleted ? html`
+          <button class="clear-completed-btn" @click="${() => this._clearCompleted()}">
+            Remove completed
+          </button>
+        ` : ""}
         ${items.map((q) => html`
           <div class="activity-item">
             <div class="activity-row-top">
               <ha-icon icon="${svcIcon[q.service] || "mdi:download"}" class="activity-svc-icon"></ha-icon>
               <span class="activity-item-title">${q.title}</span>
+              <button
+                class="queue-dismiss-btn"
+                title="${q.progress >= 100 ? "Remove from queue" : "Cancel download"}"
+                @click="${() => this._confirmDeleteQueueItem(q)}"
+              >
+                <ha-icon icon="mdi:trash-can-outline"></ha-icon>
+              </button>
             </div>
             <div class="activity-row-bottom">
               <div class="activity-progress-bar">
-                <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
+                <div class="activity-progress-fill ${q.progress >= 100 ? "complete" : ""}" style="width: ${q.progress}%"></div>
                 <span class="activity-item-pct">${(q.progress ?? 0).toFixed(0)}%</span>
               </div>
               <span class="activity-item-eta">${q.timeleft || "—"}</span>
@@ -1354,6 +1400,38 @@ class RequestarrCard extends LitElement {
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .queue-dismiss-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 2px;
+        color: var(--secondary-text-color);
+        opacity: 0.5;
+        transition: opacity 0.2s, color 0.2s;
+        flex-shrink: 0;
+        --mdc-icon-size: 14px;
+      }
+      .queue-dismiss-btn:hover {
+        opacity: 1;
+        color: var(--error-color, #f44336);
+      }
+      .clear-completed-btn {
+        display: block;
+        margin: 4px 12px 0;
+        padding: 4px 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        background: none;
+        border: 1px solid var(--primary-color);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+      }
+      .clear-completed-btn:hover {
+        background: var(--primary-color);
+        color: white;
+      }
       .activity-row-bottom {
         display: flex;
         align-items: center;
@@ -1378,6 +1456,10 @@ class RequestarrCard extends LitElement {
         height: 100%;
         background: var(--primary-color);
         border-radius: 8px;
+        transition: background 0.3s;
+      }
+      .activity-progress-fill.complete {
+        background: var(--success-color, #4caf50);
         transition: width 0.3s ease;
       }
       .activity-item-pct {

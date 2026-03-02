@@ -32,6 +32,7 @@ from .const import (
     SERVICE_LIDARR,
     SERVICE_RADARR,
     SERVICE_SONARR,
+    WS_TYPE_DELETE_QUEUE_ITEM,
     WS_TYPE_GET_QUEUE,
     WS_TYPE_GET_SERIES_SEASONS,
     WS_TYPE_GET_ARTIST_ALBUMS,
@@ -919,6 +920,36 @@ async def websocket_request_album(
 # ---------------------------------------------------------------------------
 
 
+def _format_timeleft(raw: str) -> str:
+    """Format .NET TimeSpan (e.g. '6.10:46:09.123' or '01:23:45') into human-friendly ETA."""
+    if not raw:
+        return ""
+    # Parse optional days prefix: "D.HH:MM:SS.fff" or "HH:MM:SS.fff"
+    days = 0
+    time_part = raw
+    if "." in raw.split(":")[0]:
+        day_str, time_part = raw.split(".", 1)
+        try:
+            days = int(day_str)
+        except ValueError:
+            return raw
+    # Strip fractional seconds
+    base = time_part.split(".")[0] if "." in time_part else time_part
+    parts = base.split(":")
+    if len(parts) != 3:
+        return raw
+    try:
+        h, m, s = int(parts[0]), int(parts[1]), int(parts[2])
+    except ValueError:
+        return raw
+    h += days * 24
+    if h > 0:
+        return f"{h}h {m}m"
+    if m > 0:
+        return f"{m}m {s}s"
+    return f"{s}s"
+
+
 def _normalize_queue_item(item: dict[str, Any], service_type: str) -> dict[str, Any]:
     """Normalize a queue record from any arr service into a standard format."""
     size = item.get("size", 0)
@@ -971,7 +1002,7 @@ def _normalize_queue_item(item: dict[str, Any], service_type: str) -> dict[str, 
         "season_number": season_number,
         "album_id": album_id,
         "progress": progress,
-        "timeleft": item.get("timeleft") or "",
+        "timeleft": _format_timeleft(item.get("timeleft") or ""),
         "status": item.get("status", ""),
         "queue_id": item.get("id"),
     }
@@ -1013,6 +1044,44 @@ async def websocket_get_queue(
     connection.send_result(msg["id"], {"items": all_items})
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_DELETE_QUEUE_ITEM,
+        vol.Required("queue_id"): int,
+        vol.Required("service"): str,
+        vol.Optional("remove_from_client", default=True): bool,
+        vol.Optional("blocklist", default=False): bool,
+    }
+)
+@websocket_api.async_response
+async def websocket_delete_queue_item(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Handle delete_queue_item — remove an item from the arr download queue."""
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_configured", "Requestarr not configured")
+        return
+
+    service = msg["service"]
+    client = coordinator.get_client(service)
+    if client is None:
+        connection.send_error(msg["id"], "service_unavailable", f"{service} is not configured")
+        return
+
+    try:
+        await client.async_delete_queue_item(
+            msg["queue_id"],
+            remove_from_client=msg.get("remove_from_client", True),
+            blocklist=msg.get("blocklist", False),
+        )
+        connection.send_result(msg["id"], {"success": True})
+    except (CannotConnectError, InvalidAuthError, ServerError) as err:
+        connection.send_error(msg["id"], "delete_failed", str(err))
+
+
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
@@ -1031,4 +1100,5 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_get_series_seasons)
     websocket_api.async_register_command(hass, websocket_get_artist_albums)
     websocket_api.async_register_command(hass, websocket_request_album)
+    websocket_api.async_register_command(hass, websocket_delete_queue_item)
     websocket_api.async_register_command(hass, websocket_get_queue)

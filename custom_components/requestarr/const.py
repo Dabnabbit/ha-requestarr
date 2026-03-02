@@ -75,6 +75,7 @@ WS_TYPE_GET_SERIES_SEASONS = f"{DOMAIN}/get_series_seasons"
 WS_TYPE_GET_ARTIST_ALBUMS = f"{DOMAIN}/get_artist_albums"
 WS_TYPE_REQUEST_ALBUM = f"{DOMAIN}/request_album"
 WS_TYPE_GET_QUEUE = f"{DOMAIN}/get_queue"
+WS_TYPE_DELETE_QUEUE_ITEM = f"{DOMAIN}/delete_queue_item"
 
 # Search limits
 MAX_SEARCH_RESULTS = 20
