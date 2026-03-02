@@ -925,6 +925,9 @@ def _normalize_queue_item(item: dict[str, Any], service_type: str) -> dict[str, 
     sizeleft = item.get("sizeleft", 0)
     progress = round((1 - sizeleft / size) * 100, 1) if size > 0 else 0.0
 
+    season_number = None
+    album_id = None
+
     # Extract media_id and human-readable title from nested objects.
     # The top-level "title" is the release/torrent name, not the media title.
     if service_type == SERVICE_RADARR:
@@ -937,6 +940,7 @@ def _normalize_queue_item(item: dict[str, Any], service_type: str) -> dict[str, 
         media_id = item.get("seriesId") or series.get("id")
         series_title = series.get("title", "")
         sn = item.get("seasonNumber") or episode.get("seasonNumber")
+        season_number = sn
         ep = episode.get("episodeNumber")
         ep_title = episode.get("title", "")
         # Build "Bluey — S03E12 — Cricket"
@@ -952,6 +956,7 @@ def _normalize_queue_item(item: dict[str, Any], service_type: str) -> dict[str, 
         artist = item.get("artist") or {}
         album = item.get("album") or {}
         media_id = item.get("artistId") or artist.get("id")
+        album_id = album.get("id")
         artist_name = artist.get("artistName", "")
         album_title = album.get("title", "")
         if artist_name and album_title:
@@ -963,6 +968,8 @@ def _normalize_queue_item(item: dict[str, Any], service_type: str) -> dict[str, 
         "title": title,
         "service": service_type,
         "media_id": media_id,
+        "season_number": season_number,
+        "album_id": album_id,
         "progress": progress,
         "timeleft": item.get("timeleft") or "",
         "status": item.get("status", ""),

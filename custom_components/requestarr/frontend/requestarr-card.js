@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.9.0";
+const CARD_VERSION = "0.10.0";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -36,6 +36,7 @@ class RequestarrCard extends LitElement {
       _albumCache: { type: Object },
       _albumLoading: { type: Object },
       _queueData: { type: Array },
+      _toastMessage: { type: String },
     };
   }
 
@@ -53,6 +54,8 @@ class RequestarrCard extends LitElement {
     this._albumCache = {};
     this._albumLoading = {};
     this._queueData = [];
+    this._toastMessage = "";
+    this._toastTimer = null;
     this._queueTimer = null;
     this._debounceTimer = null;
     this._searchSeq = 0;
@@ -209,6 +212,30 @@ class RequestarrCard extends LitElement {
     return this._queueData.find((q) => q.media_id === arrId) || null;
   }
 
+  _getQueueForSeason(item, seasonNumber) {
+    if (!this._queueData || !this._queueData.length || !item.arr_id) return null;
+    return this._queueData.find(
+      (q) => q.media_id === item.arr_id && q.season_number === seasonNumber
+    ) || null;
+  }
+
+  _getQueueForAlbum(item, album) {
+    if (!this._queueData || !this._queueData.length || !item.arr_id) return null;
+    return this._queueData.find(
+      (q) => q.media_id === item.arr_id && q.album_id === album.arr_id
+    ) || null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Toast
+  // ---------------------------------------------------------------------------
+
+  _showToast(msg) {
+    this._toastMessage = msg;
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => { this._toastMessage = ""; }, 3000);
+  }
+
   // ---------------------------------------------------------------------------
   // Request
   // ---------------------------------------------------------------------------
@@ -266,6 +293,7 @@ class RequestarrCard extends LitElement {
       const resp = await this.hass.connection.sendMessagePromise(payload);
       if (resp.success) {
         this._requesting = { ...this._requesting, [key]: "requested" };
+        this._showToast(`${item.title} requested successfully`);
       } else if (resp.error_code === "already_exists") {
         this._requesting = { ...this._requesting, [key]: "in_library" };
         const svc = this._activeTab === "movies" ? "Radarr" : this._activeTab === "tv" ? "Sonarr" : "Lidarr";
@@ -307,6 +335,8 @@ class RequestarrCard extends LitElement {
       });
       if (resp.success) {
         this._requesting = { ...this._requesting, [reqKey]: "requested" };
+        const sLabel = season.seasonNumber === 0 ? "Specials" : `Season ${season.seasonNumber}`;
+        this._showToast(`${item.title} ${sLabel} requested successfully`);
       } else if (resp.error_code === "already_exists") {
         this._requesting = { ...this._requesting, [reqKey]: "in_library" };
         this._requestNote = { ...this._requestNote, [reqKey]: "Already in Sonarr — check monitoring" };
@@ -337,6 +367,7 @@ class RequestarrCard extends LitElement {
       });
       if (resp.success) {
         this._requesting = { ...this._requesting, [reqKey]: "requested" };
+        this._showToast(`${album.title} requested successfully`);
       } else if (resp.error_code === "already_exists") {
         this._requesting = { ...this._requesting, [reqKey]: "in_library" };
         this._requestNote = { ...this._requestNote, [reqKey]: "Already in Lidarr — check monitoring" };
@@ -389,6 +420,7 @@ class RequestarrCard extends LitElement {
           const isRequested = reqState === "requested";
           const isInLib = reqState === "in_library" || (item.in_library && !!(s.statistics && s.statistics.episodeFileCount > 0));
           const reqErr = this._requestError[reqKey];
+          const seasonQueue = this._getQueueForSeason(item, s.seasonNumber);
           const epCount =
             s.statistics && s.statistics.totalEpisodeCount != null
               ? s.statistics.totalEpisodeCount
@@ -396,10 +428,12 @@ class RequestarrCard extends LitElement {
           return html`
             <div class="sub-row">
               <div class="sub-row-left">
-                <span class="sub-row-label">${label}</span>
-                ${epCount != null
-                  ? html`<span class="sub-row-meta">${epCount} ep${epCount !== 1 ? "s" : ""}</span>`
-                  : ""}
+                <div class="sub-row-text">
+                  <span class="sub-row-label">${label}</span>
+                  ${epCount != null
+                    ? html`<span class="sub-row-meta">${epCount} ep${epCount !== 1 ? "s" : ""}</span>`
+                    : ""}
+                </div>
               </div>
               <div class="sub-row-actions">
                 ${reqErr
@@ -418,6 +452,7 @@ class RequestarrCard extends LitElement {
                     >
                       ${isRequesting ? "Requesting\u2026" : "Request"}
                     </button>`}
+                ${seasonQueue ? html`<span class="sub-row-queue-badge">${seasonQueue.progress.toFixed(0)}%</span>` : ""}
               </div>
             </div>
           `;
@@ -454,6 +489,7 @@ class RequestarrCard extends LitElement {
           const isRequested = reqState === "requested";
           const isInLib = reqState === "in_library" || album.in_library;
           const reqErr = this._requestError[reqKey];
+          const albumQueue = this._getQueueForAlbum(item, album);
           const trackInfo =
             album.total_track_count > 0
               ? `${album.track_file_count}/${album.total_track_count} tracks`
@@ -461,12 +497,19 @@ class RequestarrCard extends LitElement {
           return html`
             <div class="sub-row">
               <div class="sub-row-left">
-                <span class="sub-row-label">${album.title}</span>
-                <span class="sub-row-meta">
-                  ${album.year ? html`${album.year}` : ""}
-                  ${album.year && trackInfo ? html` · ` : ""}
-                  ${trackInfo ? html`${trackInfo}` : ""}
-                </span>
+                <div class="album-thumb">
+                  ${album.cover_url
+                    ? html`<img class="album-thumb-img" src="${album.cover_url}" alt="" @error="${(e) => { e.target.style.display = 'none'; e.target.nextElementSibling.style.display = 'flex'; }}" /><div class="album-thumb-letter" style="display:none; background-color: ${this._hashColor(album.title || "")}">${(album.title || "?")[0].toUpperCase()}</div>`
+                    : html`<div class="album-thumb-letter" style="background-color: ${this._hashColor(album.title || "")}">${(album.title || "?")[0].toUpperCase()}</div>`}
+                </div>
+                <div class="sub-row-text">
+                  <span class="sub-row-label">${album.title}</span>
+                  <span class="sub-row-meta">
+                    ${album.year ? html`${album.year}` : ""}
+                    ${album.year && trackInfo ? html` · ` : ""}
+                    ${trackInfo ? html`${trackInfo}` : ""}
+                  </span>
+                </div>
               </div>
               <div class="sub-row-actions">
                 ${reqErr
@@ -485,6 +528,7 @@ class RequestarrCard extends LitElement {
                     >
                       ${isRequesting ? "Requesting\u2026" : "Request"}
                     </button>`}
+                ${albumQueue ? html`<span class="sub-row-queue-badge">${albumQueue.progress.toFixed(0)}%</span>` : ""}
               </div>
             </div>
           `;
@@ -515,6 +559,7 @@ class RequestarrCard extends LitElement {
           }
         </div>
         ${this._renderDialog()}
+        ${this._renderToast()}
       </ha-card>
     `;
   }
@@ -624,13 +669,41 @@ class RequestarrCard extends LitElement {
   }
 
   _renderResults() {
-    if (this._query.length < 2) return html``;
+    if (this._query.length < 2) return this._renderLibraryStats();
     if (!this._loading && this._results.length === 0) {
       return html`<div class="empty">No results for "${this._query}"</div>`;
     }
     return html`
       <div class="results">
         ${this._results.map((item) => this._renderResultRow(item))}
+      </div>
+    `;
+  }
+
+  _renderLibraryStats() {
+    if (!this.hass) return html``;
+    const services = [
+      { key: "radarr", icon: "mdi:movie", label: "Movies", show: this.config.show_radarr !== false },
+      { key: "sonarr", icon: "mdi:television", label: "TV Shows", show: this.config.show_sonarr !== false },
+      { key: "lidarr", icon: "mdi:music", label: "Artists", show: this.config.show_lidarr !== false },
+    ];
+    const rows = services.filter((s) => s.show).map((s) => {
+      const entity = this.hass.states[`sensor.requestarr_${s.key}`];
+      if (!entity) return null;
+      const status = entity.state;
+      const count = entity.attributes && entity.attributes.library_count;
+      return { ...s, status, count };
+    }).filter(Boolean);
+    if (rows.length === 0) return html``;
+    return html`
+      <div class="library-stats">
+        ${rows.map((r) => html`
+          <div class="stat-row">
+            <ha-icon icon="${r.icon}" class="stat-icon"></ha-icon>
+            <span class="stat-label">${r.label}</span>
+            <span class="stat-value">${r.status === "connected" ? r.count ?? "—" : r.status}</span>
+          </div>
+        `)}
       </div>
     `;
   }
@@ -662,7 +735,7 @@ class RequestarrCard extends LitElement {
                   }}"
                 />`
               : ""}
-            ${isMusic && !item.poster_url
+            ${!item.poster_url
               ? html`<div
                   class="poster-placeholder-letter"
                   style="background-color: ${this._hashColor(item.title || "")}"
@@ -739,6 +812,11 @@ class RequestarrCard extends LitElement {
           ${isRequesting ? "Requesting\u2026" : label}
         </button>`;
     }
+  }
+
+  _renderToast() {
+    if (!this._toastMessage) return html``;
+    return html`<div class="toast">${this._toastMessage}</div>`;
   }
 
   _renderDialog() {
@@ -972,8 +1050,9 @@ class RequestarrCard extends LitElement {
       }
       .sub-row-left {
         display: flex;
-        flex-direction: column;
-        gap: 2px;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
         min-width: 0;
       }
       .sub-row-label {
@@ -1331,6 +1410,104 @@ class RequestarrCard extends LitElement {
       }
       .req-btn-in-library:hover {
         filter: none;
+      }
+
+      /* Toast notification */
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #4caf50;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        animation: toast-slide-up 0.25s ease-out;
+        pointer-events: none;
+      }
+      @keyframes toast-slide-up {
+        from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+      }
+
+      /* Album art thumbnails in sub-rows */
+      .album-thumb {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        overflow: hidden;
+        flex-shrink: 0;
+        position: relative;
+        background: var(--secondary-background-color);
+      }
+      .album-thumb-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .album-thumb-letter {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        font-weight: 700;
+        color: white;
+      }
+      .sub-row-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      /* Library stats empty state */
+      .library-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        padding: 8px 0;
+      }
+      .stat-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 4px;
+        border-bottom: 1px solid var(--divider-color);
+      }
+      .stat-row:last-child {
+        border-bottom: none;
+      }
+      .stat-icon {
+        --mdc-icon-size: 20px;
+        color: var(--secondary-text-color);
+        flex-shrink: 0;
+      }
+      .stat-label {
+        flex: 1;
+        font-size: 0.85rem;
+        color: var(--primary-text-color);
+      }
+      .stat-value {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--primary-text-color);
+      }
+
+      /* Queue badge on sub-rows */
+      .sub-row-queue-badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 8px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        background: rgba(33, 150, 243, 0.9);
+        color: white;
       }
     `;
   }

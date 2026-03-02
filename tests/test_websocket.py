@@ -7,6 +7,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.requestarr.api import ArrClient, CannotConnectError, ServerError
+from custom_components.requestarr.websocket import _normalize_queue_item
 
 
 async def test_search_movies_in_library(
@@ -229,3 +230,40 @@ async def test_request_artist_success(
 
     assert result["success"] is True
     assert result["result"]["success"] is True
+
+
+def test_queue_sonarr_includes_season_number() -> None:
+    """Sonarr queue items include season_number from episode data."""
+    raw = {
+        "id": 100,
+        "size": 1000,
+        "sizeleft": 500,
+        "status": "downloading",
+        "timeleft": "00:05:00",
+        "seriesId": 10,
+        "seasonNumber": 3,
+        "series": {"id": 10, "title": "Bluey"},
+        "episode": {"seasonNumber": 3, "episodeNumber": 12, "title": "Cricket"},
+    }
+    result = _normalize_queue_item(raw, "sonarr")
+    assert result["season_number"] == 3
+    assert result["album_id"] is None
+    assert result["media_id"] == 10
+
+
+def test_queue_lidarr_includes_album_id() -> None:
+    """Lidarr queue items include album_id from nested album object."""
+    raw = {
+        "id": 200,
+        "size": 2000,
+        "sizeleft": 0,
+        "status": "completed",
+        "timeleft": "",
+        "artistId": 5,
+        "artist": {"id": 5, "artistName": "Radiohead"},
+        "album": {"id": 42, "title": "OK Computer"},
+    }
+    result = _normalize_queue_item(raw, "lidarr")
+    assert result["album_id"] == 42
+    assert result["season_number"] is None
+    assert result["media_id"] == 5

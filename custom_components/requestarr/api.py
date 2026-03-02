@@ -417,6 +417,13 @@ class ArrClient:
             # Library endpoint: album has actual downloaded tracks
             # Lookup endpoint: id > 0 means it's tracked in library
             in_library = track_file_count > 0 if from_library else item.get("id", 0) > 0
+            # Extract album cover art URL
+            cover_url = item.get("remoteCover")
+            if not cover_url and "images" in item:
+                for img in item.get("images", []):
+                    if img.get("coverType") == "cover":
+                        cover_url = img.get("remoteUrl")
+                        break
             result.append({
                 "title": item.get("title", ""),
                 "year": item.get("releaseDate", "")[:4] if item.get("releaseDate") else None,
@@ -426,6 +433,7 @@ class ArrClient:
                 "in_library": in_library,
                 "track_file_count": track_file_count,
                 "total_track_count": total_track_count,
+                "cover_url": cover_url,
             })
         return result
 
