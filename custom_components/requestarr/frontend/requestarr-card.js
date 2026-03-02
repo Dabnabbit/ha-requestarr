@@ -108,6 +108,7 @@ class RequestarrCard extends LitElement {
 
   _onSearchInput(e) {
     this._query = e.target.value;
+    if (this._activeTab === "downloads") return; // local filter only
     clearTimeout(this._debounceTimer);
     if (this._query.length < 2) {
       this._results = [];
@@ -503,10 +504,10 @@ class RequestarrCard extends LitElement {
     return html`
       <ha-card header="${this.config.header || ""}">
         <div class="card-content">
-          ${this._renderTabs()}
+          ${this._renderTabs()} ${this._renderSearch()}
           ${this._activeTab === "downloads"
             ? this._renderQueueView()
-            : html`${this._renderSearch()} ${this._renderResults()}`
+            : this._renderResults()
           }
         </div>
         ${this._renderDialog()}
@@ -575,10 +576,17 @@ class RequestarrCard extends LitElement {
     if (!this._queueData || this._queueData.length === 0) {
       return html`<div class="empty">No active downloads</div>`;
     }
+    const filter = this._query.trim().toLowerCase();
+    const items = filter
+      ? this._queueData.filter((q) => q.title.toLowerCase().includes(filter))
+      : this._queueData;
+    if (items.length === 0) {
+      return html`<div class="empty">No downloads matching "${this._query}"</div>`;
+    }
     const svcIcon = { radarr: "mdi:movie", sonarr: "mdi:television", lidarr: "mdi:music" };
     return html`
       <div class="queue-view">
-        ${this._queueData.map((q) => html`
+        ${items.map((q) => html`
           <div class="activity-item">
             <ha-icon icon="${svcIcon[q.service] || "mdi:download"}" class="activity-svc-icon"></ha-icon>
             <div class="activity-item-info">
