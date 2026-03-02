@@ -314,10 +314,72 @@ async def websocket_search_movies(
     connection: websocket_api.ActiveConnection,
     msg: dict[str, Any],
 ) -> None:
-    """Handle movie search via Radarr lookup endpoint."""
-    await _handle_search(
-        hass, connection, msg, SERVICE_RADARR, _normalize_movie_result
-    )
+    """Handle movie search via Radarr lookup endpoint.
+
+    For movies already in the library, fetches accurate hasFile status
+    from /movie/{id} so that monitored-but-not-downloaded movies show
+    "Requested" instead of "In Library".
+    """
+    query = msg["query"].strip()
+    if not query:
+        connection.send_result(
+            msg["id"],
+            {
+                "error": "invalid_query",
+                "message": "Search query cannot be empty",
+                "results": [],
+            },
+        )
+        return
+
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Requestarr not configured")
+        return
+
+    client = coordinator.get_client(SERVICE_RADARR)
+    if client is None:
+        connection.send_result(
+            msg["id"],
+            {
+                "error": "service_not_configured",
+                "message": "Radarr is not configured in Requestarr",
+                "results": [],
+            },
+        )
+        return
+
+    config_data = _get_config_data(hass)
+
+    try:
+        raw_results = await client.async_search(query)
+    except (CannotConnectError, InvalidAuthError, ServerError) as err:
+        _LOGGER.warning("Search failed for radarr: %s", err)
+        connection.send_result(
+            msg["id"],
+            {
+                "error": "service_unavailable",
+                "message": f"Radarr is unavailable: {err}",
+                "results": [],
+            },
+        )
+        return
+
+    results = []
+    for item in raw_results[:MAX_SEARCH_RESULTS]:
+        normalized = _normalize_movie_result(item, config_data)
+        # Enrich in-library results with accurate hasFile from /movie/{id}.
+        # The lookup endpoint does not populate hasFile.
+        if normalized["arr_id"] is not None:
+            try:
+                movie_data = await client.async_get_movie(normalized["arr_id"])
+                if movie_data:
+                    normalized["has_file"] = movie_data.get("hasFile", False)
+            except (CannotConnectError, InvalidAuthError, ServerError):
+                pass  # keep default has_file=False as fallback
+        results.append(normalized)
+
+    connection.send_result(msg["id"], {"results": results})
 
 
 @websocket_api.websocket_command(

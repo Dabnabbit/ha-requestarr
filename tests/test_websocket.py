@@ -24,25 +24,30 @@ async def test_search_movies_in_library(
             "remotePoster": "https://image.tmdb.org/t/p/original/test.jpg",
         }
     ]
+    movie_detail = {"id": 42, "hasFile": True}
     with patch.object(
         ArrClient, "async_get_library_count", new_callable=AsyncMock, return_value=1
     ):
         with patch.object(
             ArrClient, "async_search", new_callable=AsyncMock, return_value=raw
         ):
-            radarr_entry.add_to_hass(hass)
-            assert await hass.config_entries.async_setup(radarr_entry.entry_id)
-            await hass.async_block_till_done()
-            client = await hass_ws_client(hass)
-            await client.send_json(
-                {"id": 1, "type": "requestarr/search_movies", "query": "inception"}
-            )
-            result = await client.receive_json()
+            with patch.object(
+                ArrClient, "async_get_movie", new_callable=AsyncMock, return_value=movie_detail
+            ):
+                radarr_entry.add_to_hass(hass)
+                assert await hass.config_entries.async_setup(radarr_entry.entry_id)
+                await hass.async_block_till_done()
+                client = await hass_ws_client(hass)
+                await client.send_json(
+                    {"id": 1, "type": "requestarr/search_movies", "query": "inception"}
+                )
+                result = await client.receive_json()
 
     assert result["success"] is True
     item = result["result"]["results"][0]
     assert item["in_library"] is True
     assert item["arr_id"] == 42
+    assert item["has_file"] is True
     assert item["poster_url"] == "https://image.tmdb.org/t/p/w300/test.jpg"
 
 

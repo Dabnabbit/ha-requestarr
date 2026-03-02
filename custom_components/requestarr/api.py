@@ -352,6 +352,21 @@ class ArrClient:
                 pass  # search command failure is non-critical
         return result
 
+    async def async_get_movie(self, arr_id: int) -> dict[str, Any]:
+        """Fetch a single movie from Radarr library by ID.
+
+        The lookup endpoint does not populate hasFile. This method calls
+        /movie/{arr_id} to get the full library entry with accurate file status.
+
+        Args:
+            arr_id: Radarr internal movie ID.
+
+        Returns:
+            Movie dict with hasFile and other library fields.
+        """
+        result = await self._request("GET", f"/movie/{arr_id}")
+        return result if isinstance(result, dict) else {}
+
     async def async_get_series_seasons(self, arr_id: int) -> list[dict[str, Any]]:
         """Fetch accurate season data for an in-library series from Sonarr.
 

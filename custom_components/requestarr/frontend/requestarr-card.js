@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.8.0";
+const CARD_VERSION = "0.9.0";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -220,7 +220,10 @@ class RequestarrCard extends LitElement {
         : String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
     const reqState = this._requesting[key];
     if (reqState === "requested") return "requested";
-    if (reqState === "in_library" || item.in_library) return "in_library";
+    if (reqState === "in_library" || item.in_library) {
+      if (item.in_library && item.has_file === false) return "monitored";
+      return "in_library";
+    }
     return "not_in_library";
   }
 
@@ -627,22 +630,23 @@ class RequestarrCard extends LitElement {
     }
     return html`
       <div class="results">
-        ${this._results.map((item) =>
-          this._activeTab === "music"
-            ? this._renderMusicResultRow(item)
-            : this._renderResultRow(item)
-        )}
+        ${this._results.map((item) => this._renderResultRow(item))}
       </div>
     `;
   }
 
   _renderResultRow(item) {
     const isTV = this._activeTab === "tv";
+    const isMusic = this._activeTab === "music";
     const state = this._getItemState(item);
-    const key = String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
+    const key =
+      item.foreign_artist_id != null
+        ? String(item.foreign_artist_id)
+        : String(item.tmdb_id != null ? item.tmdb_id : item.tvdb_id);
     const reqErr = this._requestError[key];
-    const seasonCount = item.seasons ? item.seasons.length : null;
-    const expanded = isTV && !!this._expandedRows[key];
+    const seasonCount = !isMusic && item.seasons ? item.seasons.length : null;
+    const expanded = (isTV || isMusic) && !!this._expandedRows[key];
+    const requestLabel = isTV || isMusic ? "Request All" : "Request";
 
     return html`
       <div class="result-row">
@@ -658,8 +662,15 @@ class RequestarrCard extends LitElement {
                   }}"
                 />`
               : ""}
-            <div class="poster-placeholder"></div>
-            ${item.in_library
+            ${isMusic && !item.poster_url
+              ? html`<div
+                  class="poster-placeholder-letter"
+                  style="background-color: ${this._hashColor(item.title || "")}"
+                >${(item.title || "?")[0].toUpperCase()}</div>`
+              : html`<div class="poster-placeholder"></div>`}
+            ${state === "monitored"
+              ? html`<span class="badge-in-library" style="background: var(--warning-color, #ff9800)">Requested</span>`
+              : item.in_library
               ? html`<span class="badge-in-library">In Library</span>`
               : ""}
             ${(() => { const q = this._getQueueForItem(item); return q ? html`<span class="badge-progress">${q.progress.toFixed(0)}%</span>` : ""; })()}
@@ -674,7 +685,7 @@ class RequestarrCard extends LitElement {
               ? html`<span class="result-overview">${item.overview}</span>`
               : ""}
             <div class="result-actions">
-              ${this._renderStatus(state, key, item, isTV ? "Request All" : "Request")}
+              ${this._renderStatus(state, key, item, requestLabel)}
               ${isTV
                 ? html`<button
                     class="expand-btn"
@@ -684,57 +695,7 @@ class RequestarrCard extends LitElement {
                     <ha-icon icon="${expanded ? "mdi:chevron-down" : "mdi:chevron-right"}"></ha-icon>
                   </button>`
                 : ""}
-            </div>
-            ${reqErr ? html`<span class="req-error">${reqErr}</span>` : ""}
-            ${this._requestNote[key] ? html`<span class="req-note">${this._requestNote[key]}</span>` : ""}
-          </div>
-        </div>
-        ${expanded ? this._renderSeasonSubRows(item) : ""}
-      </div>
-    `;
-  }
-
-  _renderMusicResultRow(item) {
-    const key = String(item.foreign_artist_id);
-    const state = this._getItemState(item);
-    const reqErr = this._requestError[key];
-    const initial = item.title ? item.title[0].toUpperCase() : "?";
-    const color = this._hashColor(item.title || "");
-    const expanded = !!this._expandedRows[key];
-
-    return html`
-      <div class="result-row music-result-row">
-        <div class="result-row-main result-row-main-music">
-          <div class="avatar-wrap">
-            ${item.poster_url
-              ? html`<img
-                  class="avatar"
-                  src="${item.poster_url}"
-                  alt=""
-                  @error="${(e) => {
-                    e.target.style.display = "none";
-                  }}"
-                />`
-              : ""}
-            <div
-              class="avatar-placeholder"
-              style="background-color: ${color}"
-            >
-              ${initial}
-            </div>
-            ${item.in_library
-              ? html`<span class="badge-in-library">In Library</span>`
-              : ""}
-            ${(() => { const q = this._getQueueForItem(item); return q ? html`<span class="badge-progress">${q.progress.toFixed(0)}%</span>` : ""; })()}
-          </div>
-          <div class="result-info">
-            <span class="result-title">${item.title}</span>
-            ${item.overview
-              ? html`<span class="result-overview">${item.overview}</span>`
-              : ""}
-            <div class="result-actions">
-              ${this._renderStatus(state, key, item, "Request All")}
-              ${item.in_library
+              ${isMusic && item.in_library
                 ? html`<button
                     class="expand-btn"
                     @click="${() => {
@@ -752,7 +713,8 @@ class RequestarrCard extends LitElement {
             ${this._requestNote[key] ? html`<span class="req-note">${this._requestNote[key]}</span>` : ""}
           </div>
         </div>
-        ${expanded ? this._renderAlbumSubRows(item) : ""}
+        ${expanded && isTV ? this._renderSeasonSubRows(item) : ""}
+        ${expanded && isMusic ? this._renderAlbumSubRows(item) : ""}
       </div>
     `;
   }
@@ -763,6 +725,7 @@ class RequestarrCard extends LitElement {
       case "in_library":
         return html`<button class="req-btn req-btn-in-library" disabled>In Library</button>`;
       case "requested":
+      case "monitored":
         return html`<span class="badge badge-requested">Requested</span>`;
       case "not_in_library":
       default:
@@ -960,10 +923,6 @@ class RequestarrCard extends LitElement {
         gap: 12px;
         align-items: flex-start;
       }
-      .result-row-main-music {
-        align-items: center;
-      }
-
       /* Action row — request button + expand chevron side by side */
       .result-actions {
         display: flex;
@@ -1071,6 +1030,16 @@ class RequestarrCard extends LitElement {
         position: absolute;
         inset: 0;
       }
+      .poster-placeholder-letter {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: 700;
+        color: white;
+      }
 
       /* Result info */
       .result-info {
@@ -1157,36 +1126,6 @@ class RequestarrCard extends LitElement {
         filter: brightness(1.1);
       }
 
-      /* Music avatar (circular) */
-      .avatar-wrap {
-        position: relative;
-        flex-shrink: 0;
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        overflow: hidden;
-        background: var(--secondary-background-color);
-      }
-      .avatar {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: 50%;
-      }
-      .avatar-placeholder {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: white;
-      }
-
       /* Confirm dialog */
       .dialog-overlay {
         position: fixed;
@@ -1253,7 +1192,7 @@ class RequestarrCard extends LitElement {
         padding: 32px 16px;
       }
 
-      /* In Library badge overlay on poster/avatar */
+      /* In Library badge overlay on poster */
       .badge-in-library {
         position: absolute;
         bottom: 0;
@@ -1293,7 +1232,7 @@ class RequestarrCard extends LitElement {
         color: var(--primary-color);
       }
 
-      /* Inline progress badge on poster/avatar */
+      /* Inline progress badge on poster */
       .badge-progress {
         position: absolute;
         top: 0;
