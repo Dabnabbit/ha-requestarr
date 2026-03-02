@@ -607,10 +607,8 @@ class RequestarrCard extends LitElement {
               <span class="activity-item-title">${q.title}</span>
               <span class="activity-item-eta">${q.timeleft || "—"}</span>
             </div>
-            <div class="activity-row-bottom">
-              <div class="activity-progress-bar">
-                <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
-              </div>
+            <div class="activity-progress-bar">
+              <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
               <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
             </div>
           </div>
@@ -1350,31 +1348,29 @@ class RequestarrCard extends LitElement {
         color: var(--secondary-text-color);
         flex-shrink: 0;
       }
-      .activity-row-bottom {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
       .activity-progress-bar {
-        flex: 1;
-        height: 6px;
+        position: relative;
+        height: 16px;
         background: var(--divider-color);
-        border-radius: 3px;
+        border-radius: 8px;
         overflow: hidden;
       }
       .activity-progress-fill {
         height: 100%;
         background: var(--primary-color);
-        border-radius: 3px;
+        border-radius: 8px;
         transition: width 0.3s ease;
       }
       .activity-item-pct {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--primary-text-color);
-        flex-shrink: 0;
-        min-width: 32px;
-        text-align: right;
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6rem;
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
       }
 
       /* Disabled "In Library" button state */
