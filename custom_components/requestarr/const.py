@@ -74,9 +74,13 @@ WS_TYPE_REQUEST_ARTIST = f"{DOMAIN}/request_artist"
 WS_TYPE_GET_SERIES_SEASONS = f"{DOMAIN}/get_series_seasons"
 WS_TYPE_GET_ARTIST_ALBUMS = f"{DOMAIN}/get_artist_albums"
 WS_TYPE_REQUEST_ALBUM = f"{DOMAIN}/request_album"
+WS_TYPE_GET_QUEUE = f"{DOMAIN}/get_queue"
 
 # Search limits
 MAX_SEARCH_RESULTS = 20
+
+# Queue
+QUEUE_PAGE_SIZE = 50
 
 # Frontend
 FRONTEND_SCRIPT_URL = f"/{DOMAIN}/{DOMAIN}-card.js"

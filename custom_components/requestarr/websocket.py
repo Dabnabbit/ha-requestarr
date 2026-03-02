@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant, callback
 
 from .api import CannotConnectError, InvalidAuthError, ServerError
 from .const import (
+    ARR_SERVICES,
     CONF_LIDARR_METADATA_PROFILE_ID,
     CONF_LIDARR_METADATA_PROFILES,
     CONF_LIDARR_QUALITY_PROFILE_ID,
@@ -31,6 +32,7 @@ from .const import (
     SERVICE_LIDARR,
     SERVICE_RADARR,
     SERVICE_SONARR,
+    WS_TYPE_GET_QUEUE,
     WS_TYPE_GET_SERIES_SEASONS,
     WS_TYPE_GET_ARTIST_ALBUMS,
     WS_TYPE_REQUEST_ALBUM,
@@ -845,6 +847,75 @@ async def websocket_request_album(
 
 
 # ---------------------------------------------------------------------------
+# Queue handler
+# ---------------------------------------------------------------------------
+
+
+def _normalize_queue_item(item: dict[str, Any], service_type: str) -> dict[str, Any]:
+    """Normalize a queue record from any arr service into a standard format."""
+    size = item.get("size", 0)
+    sizeleft = item.get("sizeleft", 0)
+    progress = round((1 - sizeleft / size) * 100, 1) if size > 0 else 0.0
+
+    # Radarr: item.movie.id, Sonarr: item.seriesId or item.series.id, Lidarr: item.artistId or item.artist.id
+    if service_type == SERVICE_RADARR:
+        media_id = (item.get("movie") or {}).get("id")
+        title = item.get("title", "") or (item.get("movie") or {}).get("title", "")
+    elif service_type == SERVICE_SONARR:
+        media_id = item.get("seriesId") or (item.get("series") or {}).get("id")
+        title = item.get("title", "") or (item.get("series") or {}).get("title", "")
+    else:
+        media_id = item.get("artistId") or (item.get("artist") or {}).get("id")
+        title = item.get("title", "") or (item.get("artist") or {}).get("artistName", "")
+
+    return {
+        "title": title,
+        "service": service_type,
+        "media_id": media_id,
+        "progress": progress,
+        "timeleft": item.get("timeleft", ""),
+        "status": item.get("status", ""),
+        "queue_id": item.get("id"),
+    }
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_GET_QUEUE,
+        vol.Optional("service"): str,
+    }
+)
+@websocket_api.async_response
+async def websocket_get_queue(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Handle get_queue — fetch download queue from arr services."""
+    coordinator = _get_coordinator(hass)
+    if coordinator is None:
+        connection.send_result(msg["id"], {"items": []})
+        return
+
+    service_filter = msg.get("service")
+    services = [service_filter] if service_filter else ARR_SERVICES
+
+    all_items: list[dict[str, Any]] = []
+    for svc in services:
+        client = coordinator.get_client(svc)
+        if client is None:
+            continue
+        try:
+            records = await client.async_get_queue()
+            for record in records:
+                all_items.append(_normalize_queue_item(record, svc))
+        except (CannotConnectError, InvalidAuthError, ServerError):
+            pass  # skip unavailable services
+
+    connection.send_result(msg["id"], {"items": all_items})
+
+
+# ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
 
@@ -862,3 +933,4 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, websocket_get_series_seasons)
     websocket_api.async_register_command(hass, websocket_get_artist_albums)
     websocket_api.async_register_command(hass, websocket_request_album)
+    websocket_api.async_register_command(hass, websocket_get_queue)

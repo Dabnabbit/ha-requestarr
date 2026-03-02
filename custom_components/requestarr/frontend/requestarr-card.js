@@ -11,7 +11,7 @@ const LitElement = customElements.get("hui-masonry-view")
 const html = LitElement.prototype.html;
 const css = LitElement.prototype.css;
 
-const CARD_VERSION = "0.7.0";
+const CARD_VERSION = "0.8.0";
 
 console.info(
   `%c REQUESTARR-CARD %c v${CARD_VERSION} `,
@@ -35,6 +35,8 @@ class RequestarrCard extends LitElement {
       _expandedRows: { type: Object },
       _albumCache: { type: Object },
       _albumLoading: { type: Object },
+      _queueData: { type: Array },
+      _activityExpanded: { type: Boolean },
     };
   }
 
@@ -51,8 +53,25 @@ class RequestarrCard extends LitElement {
     this._expandedRows = {};
     this._albumCache = {};
     this._albumLoading = {};
+    this._queueData = [];
+    this._activityExpanded = false;
+    this._queueTimer = null;
     this._debounceTimer = null;
     this._searchSeq = 0;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._fetchQueue();
+    this._queueTimer = setInterval(() => this._fetchQueue(), 10000);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this._queueTimer) {
+      clearInterval(this._queueTimer);
+      this._queueTimer = null;
+    }
   }
 
   static getConfigElement() {
@@ -165,6 +184,29 @@ class RequestarrCard extends LitElement {
     } finally {
       this._albumLoading = { ...this._albumLoading, [id]: false };
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Queue
+  // ---------------------------------------------------------------------------
+
+  async _fetchQueue() {
+    if (!this.hass) return;
+    try {
+      const resp = await this.hass.connection.sendMessagePromise({
+        type: "requestarr/get_queue",
+      });
+      this._queueData = resp.items || [];
+    } catch (_err) {
+      // silently ignore — queue is non-critical
+    }
+  }
+
+  _getQueueForItem(item) {
+    if (!this._queueData || this._queueData.length === 0) return null;
+    const arrId = item.arr_id;
+    if (!arrId) return null;
+    return this._queueData.find((q) => q.media_id === arrId) || null;
   }
 
   // ---------------------------------------------------------------------------
@@ -462,7 +504,7 @@ class RequestarrCard extends LitElement {
     return html`
       <ha-card header="${this.config.header || ""}">
         <div class="card-content">
-          ${this._renderTabs()} ${this._renderSearch()} ${this._renderResults()}
+          ${this._renderTabs()} ${this._renderActivitySection()} ${this._renderSearch()} ${this._renderResults()}
         </div>
         ${this._renderDialog()}
       </ha-card>
@@ -510,6 +552,40 @@ class RequestarrCard extends LitElement {
             </button>
           `;
         })}
+      </div>
+    `;
+  }
+
+  _renderActivitySection() {
+    if (!this._queueData || this._queueData.length === 0) return html``;
+    const svcIcon = { radarr: "mdi:movie", sonarr: "mdi:television", lidarr: "mdi:music" };
+    return html`
+      <div class="activity-section">
+        <button
+          class="activity-header"
+          @click="${() => { this._activityExpanded = !this._activityExpanded; }}"
+        >
+          <ha-icon icon="mdi:download" class="activity-icon"></ha-icon>
+          <span class="activity-title">Downloads (${this._queueData.length})</span>
+          <ha-icon icon="${this._activityExpanded ? "mdi:chevron-down" : "mdi:chevron-right"}" class="activity-chevron"></ha-icon>
+        </button>
+        ${this._activityExpanded ? html`
+          <div class="activity-list">
+            ${this._queueData.map((q) => html`
+              <div class="activity-item">
+                <ha-icon icon="${svcIcon[q.service] || "mdi:download"}" class="activity-svc-icon"></ha-icon>
+                <div class="activity-item-info">
+                  <span class="activity-item-title">${q.title}</span>
+                  <div class="activity-progress-bar">
+                    <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
+                  </div>
+                </div>
+                <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
+                ${q.timeleft ? html`<span class="activity-item-eta">${q.timeleft}</span>` : ""}
+              </div>
+            `)}
+          </div>
+        ` : ""}
       </div>
     `;
   }
@@ -576,6 +652,7 @@ class RequestarrCard extends LitElement {
             ${item.in_library
               ? html`<span class="badge-in-library">In Library</span>`
               : ""}
+            ${(() => { const q = this._getQueueForItem(item); return q ? html`<span class="badge-progress">${q.progress.toFixed(0)}%</span>` : ""; })()}
           </div>
           <div class="result-info">
             <span class="result-title">${item.title}</span>
@@ -638,6 +715,7 @@ class RequestarrCard extends LitElement {
             ${item.in_library
               ? html`<span class="badge-in-library">In Library</span>`
               : ""}
+            ${(() => { const q = this._getQueueForItem(item); return q ? html`<span class="badge-progress">${q.progress.toFixed(0)}%</span>` : ""; })()}
           </div>
           <div class="result-info">
             <span class="result-title">${item.title}</span>
@@ -1181,6 +1259,112 @@ class RequestarrCard extends LitElement {
         text-align: center;
         padding: 2px 0;
         letter-spacing: 0.03em;
+      }
+
+      /* Inline progress badge on poster/avatar */
+      .badge-progress {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(33, 150, 243, 0.9);
+        color: white;
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-align: center;
+        padding: 2px 0;
+        letter-spacing: 0.03em;
+      }
+
+      /* Activity section */
+      .activity-section {
+        margin-bottom: 12px;
+        border: 1px solid var(--divider-color);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .activity-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 8px 12px;
+        background: var(--secondary-background-color);
+        border: none;
+        cursor: pointer;
+        color: var(--primary-text-color);
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .activity-header:hover {
+        background: var(--divider-color);
+      }
+      .activity-icon {
+        --mdc-icon-size: 18px;
+        color: var(--primary-color);
+      }
+      .activity-title {
+        flex: 1;
+        text-align: left;
+      }
+      .activity-chevron {
+        --mdc-icon-size: 18px;
+        color: var(--secondary-text-color);
+      }
+      .activity-list {
+        display: flex;
+        flex-direction: column;
+      }
+      .activity-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-top: 1px solid var(--divider-color);
+      }
+      .activity-svc-icon {
+        --mdc-icon-size: 16px;
+        color: var(--secondary-text-color);
+        flex-shrink: 0;
+      }
+      .activity-item-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .activity-item-title {
+        font-size: 0.8rem;
+        color: var(--primary-text-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .activity-progress-bar {
+        height: 4px;
+        background: var(--divider-color);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .activity-progress-fill {
+        height: 100%;
+        background: var(--primary-color);
+        border-radius: 2px;
+        transition: width 0.3s ease;
+      }
+      .activity-item-pct {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--primary-text-color);
+        flex-shrink: 0;
+        min-width: 32px;
+        text-align: right;
+      }
+      .activity-item-eta {
+        font-size: 0.7rem;
+        color: var(--secondary-text-color);
+        flex-shrink: 0;
       }
 
       /* Disabled "In Library" button state */

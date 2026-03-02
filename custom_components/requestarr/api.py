@@ -8,7 +8,13 @@ from typing import Any
 
 import aiohttp
 
-from .const import API_VERSIONS, DEFAULT_TIMEOUT, LIBRARY_ENDPOINTS, LOOKUP_ENDPOINTS
+from .const import (
+    API_VERSIONS,
+    DEFAULT_TIMEOUT,
+    LIBRARY_ENDPOINTS,
+    LOOKUP_ENDPOINTS,
+    QUEUE_PAGE_SIZE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -460,6 +466,19 @@ class ArrClient:
             "albums": album_list,
         }
         return await self._request("POST", "/artist", json=payload)
+
+    async def async_get_queue(self) -> list[dict[str, Any]]:
+        """Fetch the download queue from the arr service.
+
+        Returns:
+            List of queue record dicts from the arr API.
+        """
+        data = await self._request(
+            "GET", "/queue", params={"pageSize": QUEUE_PAGE_SIZE}
+        )
+        if isinstance(data, dict):
+            return data.get("records", [])
+        return []
 
     async def async_get_library_count(self) -> int:
         """Fetch the total number of items in the library.
