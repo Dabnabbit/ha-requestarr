@@ -852,16 +852,14 @@ class RequestarrCard extends LitElement {
         overflow: hidden;
       }
 
-      /* Nav bar */
+      /* Nav bar — segmented control */
       .nav-bar {
         display: flex;
-        justify-content: center;
-        gap: 0;
-        padding: 8px 0;
-        border-bottom: 1px solid var(--divider-color);
         margin-bottom: 12px;
+        border: 1px solid var(--divider-color);
+        border-radius: 10px;
+        overflow: hidden;
         background: var(--secondary-background-color);
-        border-radius: 12px;
       }
       .nav-hint {
         font-size: 0.8rem;
@@ -875,34 +873,35 @@ class RequestarrCard extends LitElement {
         justify-content: center;
         background: none;
         border: none;
-        padding: 8px 0;
+        border-right: 1px solid var(--divider-color);
+        padding: 10px 0;
         cursor: pointer;
         color: var(--secondary-text-color);
-        transition: color 0.15s, background 0.15s;
-        border-radius: 12px;
+        transition: color 0.2s, background 0.2s;
         position: relative;
       }
+      .nav-btn:last-child {
+        border-right: none;
+      }
       .nav-btn.active {
-        color: var(--primary-color);
-        background: var(--card-background-color, var(--ha-card-background, white));
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        color: white;
+        background: var(--primary-color);
       }
       .nav-btn:hover:not(.active) {
+        background: rgba(var(--rgb-primary-color, 33, 150, 243), 0.08);
         color: var(--primary-text-color);
       }
       .nav-btn ha-icon {
-        --mdc-icon-size: 22px;
+        --mdc-icon-size: 20px;
       }
-      .nav-btn.status-connected {
+      /* Status tinting — only when NOT active (active bg overrides) */
+      .nav-btn.status-connected:not(.active) {
         color: #4caf50;
       }
-      .nav-btn.status-connected.active {
-        color: #4caf50;
-      }
-      .nav-btn.status-error {
+      .nav-btn.status-error:not(.active) {
         color: var(--error-color, #f44336);
       }
-      .nav-btn.status-disconnected {
+      .nav-btn.status-disconnected:not(.active) {
         color: #9e9e9e;
       }
 
@@ -1274,19 +1273,17 @@ class RequestarrCard extends LitElement {
         letter-spacing: 0.03em;
       }
 
-      /* Queue nav button */
+      /* Queue nav button — same flex as others */
       .nav-btn-queue {
         position: relative;
-        flex: 0 0 auto;
-        padding: 8px 12px;
       }
       .queue-badge {
         position: absolute;
-        top: 2px;
-        right: 4px;
-        background: var(--primary-color);
+        top: 3px;
+        right: calc(50% - 18px);
+        background: var(--error-color, #f44336);
         color: white;
-        font-size: 0.55rem;
+        font-size: 0.5rem;
         font-weight: 700;
         min-width: 14px;
         height: 14px;
@@ -1294,6 +1291,11 @@ class RequestarrCard extends LitElement {
         text-align: center;
         border-radius: 7px;
         padding: 0 3px;
+        pointer-events: none;
+      }
+      .nav-btn-queue.active .queue-badge {
+        background: white;
+        color: var(--primary-color);
       }
 
       /* Inline progress badge on poster/avatar */
