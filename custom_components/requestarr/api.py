@@ -406,11 +406,33 @@ class ArrClient:
                 "title": item.get("title", ""),
                 "year": item.get("releaseDate", "")[:4] if item.get("releaseDate") else None,
                 "foreign_album_id": fid,
+                "arr_id": item.get("id", 0) if from_library else None,
                 "monitored": item.get("monitored", False),
                 "in_library": in_library,
                 "track_file_count": track_file_count,
                 "total_track_count": total_track_count,
             })
+        return result
+
+    async def async_monitor_album(self, album_arr_id: int) -> dict[str, Any]:
+        """Monitor and search an existing album in Lidarr.
+
+        Args:
+            album_arr_id: Lidarr internal album ID.
+
+        Returns:
+            Updated album dict from Lidarr.
+        """
+        album = await self._request("GET", f"/album/{album_arr_id}")
+        album["monitored"] = True
+        result = await self._request("PUT", f"/album/{album_arr_id}", json=album)
+        try:
+            await self._request(
+                "POST", "/command",
+                json={"name": "AlbumSearch", "albumIds": [album_arr_id]},
+            )
+        except ServerError:
+            pass  # search command failure is non-critical
         return result
 
     async def async_request_album(

@@ -330,6 +330,7 @@ class RequestarrCard extends LitElement {
         foreign_artist_id: item.foreign_artist_id,
         foreign_album_id: album.foreign_album_id,
         title: item.title,
+        ...(album.arr_id ? { album_arr_id: album.arr_id } : {}),
       });
       if (resp.success) {
         this._requesting = { ...this._requesting, [reqKey]: "requested" };

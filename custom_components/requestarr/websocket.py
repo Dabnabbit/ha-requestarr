@@ -765,6 +765,7 @@ async def websocket_get_artist_albums(
         vol.Required("foreign_artist_id"): str,
         vol.Required("foreign_album_id"): str,
         vol.Required("title"): str,
+        vol.Optional("album_arr_id"): int,
     }
 )
 @websocket_api.async_response
@@ -803,15 +804,20 @@ async def websocket_request_album(
     metadata_profile_id = config_data.get(CONF_LIDARR_METADATA_PROFILE_ID)
     root_folder = config_data.get(CONF_LIDARR_ROOT_FOLDER, "")
 
+    album_arr_id = msg.get("album_arr_id")
+
     try:
-        await client.async_request_album(
-            foreign_artist_id=msg["foreign_artist_id"],
-            foreign_album_id=msg["foreign_album_id"],
-            artist_name=msg["title"],
-            quality_profile_id=quality_profile_id,
-            metadata_profile_id=metadata_profile_id,
-            root_folder_path=root_folder,
-        )
+        if album_arr_id:
+            await client.async_monitor_album(album_arr_id)
+        else:
+            await client.async_request_album(
+                foreign_artist_id=msg["foreign_artist_id"],
+                foreign_album_id=msg["foreign_album_id"],
+                artist_name=msg["title"],
+                quality_profile_id=quality_profile_id,
+                metadata_profile_id=metadata_profile_id,
+                root_folder_path=root_folder,
+            )
         connection.send_result(msg["id"], {"success": True})
     except ServerError as err:
         err_str = str(err)
