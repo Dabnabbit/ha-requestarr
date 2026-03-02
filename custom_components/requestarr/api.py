@@ -478,7 +478,7 @@ class ArrClient:
         # Each service needs its own include params for nested media objects
         include_params = {
             "radarr": {"includeMovie": "true"},
-            "sonarr": {"includeSeries": "true"},
+            "sonarr": {"includeSeries": "true", "includeEpisode": "true"},
             "lidarr": {"includeArtist": "true", "includeAlbum": "true"},
         }
         params = {"pageSize": QUEUE_PAGE_SIZE}

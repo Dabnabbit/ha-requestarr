@@ -865,12 +865,31 @@ def _normalize_queue_item(item: dict[str, Any], service_type: str) -> dict[str, 
         title = movie.get("title", "") or item.get("title", "")
     elif service_type == SERVICE_SONARR:
         series = item.get("series") or {}
+        episode = item.get("episode") or {}
         media_id = item.get("seriesId") or series.get("id")
-        title = series.get("title", "") or item.get("title", "")
+        series_title = series.get("title", "")
+        sn = item.get("seasonNumber") or episode.get("seasonNumber")
+        ep = episode.get("episodeNumber")
+        ep_title = episode.get("title", "")
+        # Build "Bluey — S03E12 — Cricket"
+        parts = [series_title]
+        if sn is not None and ep is not None:
+            parts.append(f"S{sn:02d}E{ep:02d}")
+        elif sn is not None:
+            parts.append(f"S{sn:02d}")
+        if ep_title:
+            parts.append(ep_title)
+        title = " \u2014 ".join(parts) if parts[0] else item.get("title", "")
     else:
         artist = item.get("artist") or {}
+        album = item.get("album") or {}
         media_id = item.get("artistId") or artist.get("id")
-        title = artist.get("artistName", "") or item.get("title", "")
+        artist_name = artist.get("artistName", "")
+        album_title = album.get("title", "")
+        if artist_name and album_title:
+            title = f"{artist_name} \u2014 {album_title}"
+        else:
+            title = artist_name or album_title or item.get("title", "")
 
     return {
         "title": title,
