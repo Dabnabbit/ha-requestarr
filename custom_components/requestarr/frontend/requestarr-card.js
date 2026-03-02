@@ -73,6 +73,14 @@ class RequestarrCard extends LitElement {
       clearInterval(this._queueTimer);
       this._queueTimer = null;
     }
+    if (this._toastTimer) {
+      clearTimeout(this._toastTimer);
+      this._toastTimer = null;
+    }
+    if (this._debounceTimer) {
+      clearTimeout(this._debounceTimer);
+      this._debounceTimer = null;
+    }
   }
 
   static getConfigElement() {
@@ -315,6 +323,7 @@ class RequestarrCard extends LitElement {
   }
 
   async _doRequestSeason(item, season) {
+    if (season.seasonNumber == null) return;
     const reqKey = `${item.tvdb_id}:s${season.seasonNumber}`;
     this._requesting = { ...this._requesting, [reqKey]: "requesting" };
 
@@ -452,7 +461,7 @@ class RequestarrCard extends LitElement {
                     >
                       ${isRequesting ? "Requesting\u2026" : "Request"}
                     </button>`}
-                ${seasonQueue ? html`<span class="sub-row-queue-badge">${seasonQueue.progress.toFixed(0)}%</span>` : ""}
+                ${seasonQueue ? html`<span class="sub-row-queue-badge">${(seasonQueue.progress ?? 0).toFixed(0)}%</span>` : ""}
               </div>
             </div>
           `;
@@ -528,7 +537,7 @@ class RequestarrCard extends LitElement {
                     >
                       ${isRequesting ? "Requesting\u2026" : "Request"}
                     </button>`}
-                ${albumQueue ? html`<span class="sub-row-queue-badge">${albumQueue.progress.toFixed(0)}%</span>` : ""}
+                ${albumQueue ? html`<span class="sub-row-queue-badge">${(albumQueue.progress ?? 0).toFixed(0)}%</span>` : ""}
               </div>
             </div>
           `;
@@ -658,7 +667,7 @@ class RequestarrCard extends LitElement {
             <div class="activity-row-bottom">
               <div class="activity-progress-bar">
                 <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
-                <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
+                <span class="activity-item-pct">${(q.progress ?? 0).toFixed(0)}%</span>
               </div>
               <span class="activity-item-eta">${q.timeleft || "—"}</span>
             </div>
@@ -746,7 +755,7 @@ class RequestarrCard extends LitElement {
               : item.in_library
               ? html`<span class="badge-in-library">In Library</span>`
               : ""}
-            ${(() => { const q = this._getQueueForItem(item); return q ? html`<span class="badge-progress">${q.progress.toFixed(0)}%</span>` : ""; })()}
+            ${(() => { const q = this._getQueueForItem(item); return q ? html`<span class="badge-progress">${(q.progress ?? 0).toFixed(0)}%</span>` : ""; })()}
           </div>
           <div class="result-info">
             <span class="result-title">${item.title}</span>

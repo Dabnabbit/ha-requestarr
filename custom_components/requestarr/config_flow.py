@@ -21,7 +21,7 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
 )
 
-from .api import ArrClient, CannotConnectError, InvalidAuthError
+from .api import ArrClient, CannotConnectError, InvalidAuthError, ServerError
 from .const import (
     CONF_LIDARR_API_KEY,
     CONF_LIDARR_FOLDERS,
@@ -124,22 +124,29 @@ async def _validate_and_fetch(
     profiles = await client.async_get_quality_profiles()
     folders = await client.async_get_root_folders()
 
+    if not profiles or not folders:
+        raise ServerError(
+            f"{service_type} has no quality profiles or root folders configured"
+        )
+
     result: dict[str, Any] = {
         "profiles": [{"id": p["id"], "name": p["name"]} for p in profiles],
         "folders": [{"id": f["id"], "path": f["path"]} for f in folders],
-        "quality_profile_id": profiles[0]["id"] if profiles else None,
-        "root_folder": folders[0]["path"] if folders else None,
+        "quality_profile_id": profiles[0]["id"],
+        "root_folder": folders[0]["path"],
     }
 
     # Lidarr also needs metadata profiles
     if service_type == SERVICE_LIDARR:
         metadata_profiles = await client.async_get_metadata_profiles()
+        if not metadata_profiles:
+            raise ServerError(
+                f"{service_type} has no metadata profiles configured"
+            )
         result["metadata_profiles"] = [
             {"id": p["id"], "name": p["name"]} for p in metadata_profiles
         ]
-        result["metadata_profile_id"] = (
-            metadata_profiles[0]["id"] if metadata_profiles else None
-        )
+        result["metadata_profile_id"] = metadata_profiles[0]["id"]
 
     return result
 

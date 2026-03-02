@@ -14,13 +14,7 @@ from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, FRONTEND_SCRIPT_URL
 from .coordinator import RequestarrCoordinator
-
 from .websocket import async_setup_websocket
-
-
-from .services import async_register_services
-
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,10 +29,7 @@ class RequestarrData:
     coordinator: RequestarrCoordinator
 
 
-
-type RequestarrConfigEntry = ConfigEntry[
-    RequestarrData
-]
+type RequestarrConfigEntry = ConfigEntry[RequestarrData]
 
 
 async def _async_register_lovelace_resource(lovelace) -> None:
@@ -83,11 +74,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     except Exception:  # noqa: BLE001
         _LOGGER.debug("Could not auto-register Lovelace resource; add manually")
 
-
     async_setup_websocket(hass)
-
-
-    async_register_services(hass)
 
     return True
 
@@ -97,10 +84,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: RequestarrConfigEntry) -
     coordinator = RequestarrCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 
-
-
     entry.runtime_data = RequestarrData(coordinator=coordinator)
-
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

@@ -1,9 +1,0 @@
-query:
-  description: "Query the Requestarr service."
-  fields:
-    query:
-      required: true
-      description: "The query string to send."
-      example: "search term"
-      selector:
-        text:
