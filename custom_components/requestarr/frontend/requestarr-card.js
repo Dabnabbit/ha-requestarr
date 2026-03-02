@@ -605,11 +605,13 @@ class RequestarrCard extends LitElement {
             <div class="activity-row-top">
               <ha-icon icon="${svcIcon[q.service] || "mdi:download"}" class="activity-svc-icon"></ha-icon>
               <span class="activity-item-title">${q.title}</span>
-              <span class="activity-item-eta">${q.timeleft || "—"}</span>
             </div>
-            <div class="activity-progress-bar">
-              <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
-              <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
+            <div class="activity-row-bottom">
+              <div class="activity-progress-bar">
+                <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
+                <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
+              </div>
+              <span class="activity-item-eta">${q.timeleft || "—"}</span>
             </div>
           </div>
         `)}
@@ -1343,12 +1345,20 @@ class RequestarrCard extends LitElement {
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .activity-row-bottom {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
       .activity-item-eta {
         font-size: 0.7rem;
         color: var(--secondary-text-color);
         flex-shrink: 0;
+        min-width: 56px;
+        text-align: right;
       }
       .activity-progress-bar {
+        flex: 1;
         position: relative;
         height: 16px;
         background: var(--divider-color);
