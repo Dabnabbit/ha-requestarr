@@ -588,13 +588,14 @@ class RequestarrCard extends LitElement {
   }
 
   _renderHeader() {
+    const queueCount = this._queueData ? this._queueData.length : 0;
     const tabs = [
       { key: "movies", show: this.config.show_radarr !== false, icon: "mdi:movie", label: "Movies", service: "radarr" },
       { key: "tv", show: this.config.show_sonarr !== false, icon: "mdi:television", label: "TV Shows", service: "sonarr" },
       { key: "music", show: this.config.show_lidarr !== false, icon: "mdi:music", label: "Music", service: "lidarr" },
+      { key: "downloads", show: queueCount > 0, icon: "mdi:download", label: `Downloads (${queueCount})`, service: null },
     ];
     const visible = tabs.filter((t) => t.show);
-    const queueCount = this._queueData ? this._queueData.length : 0;
     const placeholder = this._activeTab === "downloads" ? "Filter downloads..." : "Search...";
 
     if (visible.length === 0) {
@@ -605,11 +606,12 @@ class RequestarrCard extends LitElement {
       <div class="card-header">
         <div class="nav-row">
           ${visible.map((t) => {
-            const status = this._getServiceStatus(t.service);
+            const status = t.service ? this._getServiceStatus(t.service) : null;
             const statusClass = status ? `status-${status}` : "";
+            const isDownloading = t.key === "downloads";
             return html`
               <button
-                class="nav-btn ${this._activeTab === t.key ? "active" : ""} ${statusClass}"
+                class="nav-btn ${this._activeTab === t.key ? "active" : ""} ${statusClass} ${isDownloading ? "downloading" : ""}"
                 title="${t.label}${status ? ` (${status})` : ""}"
                 @click="${() => this._switchTab(t.key)}"
               >
@@ -617,16 +619,6 @@ class RequestarrCard extends LitElement {
               </button>
             `;
           })}
-          ${queueCount > 0 ? html`
-            <button
-              class="nav-btn nav-btn-queue ${this._activeTab === "downloads" ? "active" : ""}"
-              title="Downloads (${queueCount})"
-              @click="${() => this._switchTab("downloads")}"
-            >
-              <ha-icon icon="mdi:download"></ha-icon>
-              <span class="queue-badge">${queueCount}</span>
-            </button>
-          ` : ""}
         </div>
         <div class="search-wrap">
           <input
@@ -914,6 +906,8 @@ class RequestarrCard extends LitElement {
       }
       .nav-row {
         display: flex;
+        border-bottom: 1px solid var(--divider-color);
+        contain: layout style;
       }
       .nav-btn {
         flex: 1;
@@ -957,7 +951,6 @@ class RequestarrCard extends LitElement {
       /* Search — inside card-header */
       .search-wrap {
         position: relative;
-        border-top: 1px solid var(--divider-color);
       }
       .search-input {
         width: 100%;
@@ -1295,29 +1288,17 @@ class RequestarrCard extends LitElement {
         letter-spacing: 0.03em;
       }
 
-      /* Queue nav button — same flex as others */
-      .nav-btn-queue {
-        position: relative;
+      /* Download tab — animated when active downloads exist */
+      .nav-btn.downloading:not(.active) ha-icon {
+        color: var(--success-color, #4caf50);
+        animation: bounce-down 1s ease-in-out infinite;
       }
-      .queue-badge {
-        position: absolute;
-        top: 3px;
-        right: calc(50% - 18px);
-        background: var(--error-color, #f44336);
-        color: white;
-        font-size: 0.5rem;
-        font-weight: 700;
-        min-width: 14px;
-        height: 14px;
-        line-height: 14px;
-        text-align: center;
-        border-radius: 7px;
-        padding: 0 3px;
-        pointer-events: none;
+      .nav-btn.downloading.active ha-icon {
+        animation: bounce-down 1s ease-in-out infinite;
       }
-      .nav-btn-queue.active .queue-badge {
-        background: white;
-        color: var(--primary-color);
+      @keyframes bounce-down {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(2px); }
       }
 
       /* Inline progress badge on poster */
