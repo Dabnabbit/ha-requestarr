@@ -512,6 +512,7 @@ async def websocket_request_movie(
         vol.Required("title"): str,
         vol.Required("title_slug"): str,
         vol.Required("seasons"): list,
+        vol.Optional("arr_id"): int,
     }
 )
 @websocket_api.async_response
@@ -549,15 +550,26 @@ async def websocket_request_series(
     quality_profile_id = config_data.get(CONF_SONARR_QUALITY_PROFILE_ID)
     root_folder = config_data.get(CONF_SONARR_ROOT_FOLDER, "")
 
+    arr_id = msg.get("arr_id")
+
     try:
-        await client.async_request_series(
-            tvdb_id=msg["tvdb_id"],
-            title=msg["title"],
-            title_slug=msg["title_slug"],
-            quality_profile_id=quality_profile_id,
-            root_folder_path=root_folder,
-            seasons=msg["seasons"],
-        )
+        if arr_id:
+            # Series already in Sonarr — monitor requested seasons and trigger search
+            season_numbers = [
+                s.get("seasonNumber", 0)
+                for s in msg["seasons"]
+                if s.get("monitored", False)
+            ]
+            await client.async_monitor_seasons(arr_id, season_numbers)
+        else:
+            await client.async_request_series(
+                tvdb_id=msg["tvdb_id"],
+                title=msg["title"],
+                title_slug=msg["title_slug"],
+                quality_profile_id=quality_profile_id,
+                root_folder_path=root_folder,
+                seasons=msg["seasons"],
+            )
         connection.send_result(msg["id"], {"success": True})
     except ServerError as err:
         err_str = str(err)

@@ -312,6 +312,40 @@ class ArrClient:
         }
         return await self._request("POST", "/artist", json=payload)
 
+    async def async_monitor_seasons(
+        self, arr_id: int, season_numbers: list[int]
+    ) -> dict[str, Any]:
+        """Monitor and search specific seasons for an existing Sonarr series.
+
+        Fetches the current series data, sets the requested seasons to
+        monitored=True, saves via PUT, then triggers a SeasonSearch for each
+        newly monitored season.
+
+        Args:
+            arr_id: Sonarr internal series ID.
+            season_numbers: Season numbers to monitor and search.
+
+        Returns:
+            Updated series dict from Sonarr.
+        """
+        series = await self._request("GET", f"/series/{arr_id}")
+        for s in series.get("seasons", []):
+            if s.get("seasonNumber") in season_numbers:
+                s["monitored"] = True
+        series["monitored"] = True
+        result = await self._request("PUT", f"/series/{arr_id}", json=series)
+
+        for sn in season_numbers:
+            try:
+                await self._request(
+                    "POST",
+                    "/command",
+                    json={"name": "SeasonSearch", "seriesId": arr_id, "seasonNumber": sn},
+                )
+            except ServerError:
+                pass  # search command failure is non-critical
+        return result
+
     async def async_get_series_seasons(self, arr_id: int) -> list[dict[str, Any]]:
         """Fetch accurate season data for an in-library series from Sonarr.
 

@@ -206,6 +206,7 @@ class RequestarrCard extends LitElement {
         title: item.title,
         title_slug: item.title_slug,
         seasons: (item.seasons || []).map((s) => ({ ...s, monitored: true })),
+        ...(item.arr_id ? { arr_id: item.arr_id } : {}),
       };
     } else {
       // music — request all (entire artist)
@@ -257,6 +258,7 @@ class RequestarrCard extends LitElement {
         title: item.title,
         title_slug: item.title_slug,
         seasons,
+        ...(item.arr_id ? { arr_id: item.arr_id } : {}),
       });
       if (resp.success) {
         this._requesting = { ...this._requesting, [reqKey]: "requested" };
