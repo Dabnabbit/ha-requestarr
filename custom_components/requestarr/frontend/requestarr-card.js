@@ -504,7 +504,7 @@ class RequestarrCard extends LitElement {
     return html`
       <ha-card header="${this.config.header || ""}">
         <div class="card-content">
-          ${this._renderTabs()} ${this._renderSearch()}
+          ${this._renderHeader()}
           ${this._activeTab === "downloads"
             ? this._renderQueueView()
             : this._renderResults()
@@ -529,45 +529,59 @@ class RequestarrCard extends LitElement {
     return entity.state; // "connected" | "disconnected" | "error"
   }
 
-  _renderTabs() {
+  _renderHeader() {
     const tabs = [
       { key: "movies", show: this.config.show_radarr !== false, icon: "mdi:movie", label: "Movies", service: "radarr" },
       { key: "tv", show: this.config.show_sonarr !== false, icon: "mdi:television", label: "TV Shows", service: "sonarr" },
       { key: "music", show: this.config.show_lidarr !== false, icon: "mdi:music", label: "Music", service: "lidarr" },
     ];
     const visible = tabs.filter((t) => t.show);
+    const queueCount = this._queueData ? this._queueData.length : 0;
+    const placeholder = this._activeTab === "downloads" ? "Filter downloads..." : "Search...";
 
     if (visible.length === 0) {
-      return html`<div class="nav-bar"><span class="nav-hint">No services enabled</span></div>`;
+      return html`<div class="card-header"><span class="nav-hint">No services enabled</span></div>`;
     }
 
-    const queueCount = this._queueData ? this._queueData.length : 0;
-
     return html`
-      <div class="nav-bar">
-        ${visible.map((t) => {
-          const status = this._getServiceStatus(t.service);
-          const statusClass = status ? `status-${status}` : "";
-          return html`
+      <div class="card-header">
+        <div class="nav-row">
+          ${visible.map((t) => {
+            const status = this._getServiceStatus(t.service);
+            const statusClass = status ? `status-${status}` : "";
+            return html`
+              <button
+                class="nav-btn ${this._activeTab === t.key ? "active" : ""} ${statusClass}"
+                title="${t.label}${status ? ` (${status})` : ""}"
+                @click="${() => this._switchTab(t.key)}"
+              >
+                <ha-icon icon="${t.icon}"></ha-icon>
+              </button>
+            `;
+          })}
+          ${queueCount > 0 ? html`
             <button
-              class="nav-btn ${this._activeTab === t.key ? "active" : ""} ${statusClass}"
-              title="${t.label}${status ? ` (${status})` : ""}"
-              @click="${() => this._switchTab(t.key)}"
+              class="nav-btn nav-btn-queue ${this._activeTab === "downloads" ? "active" : ""}"
+              title="Downloads (${queueCount})"
+              @click="${() => this._switchTab("downloads")}"
             >
-              <ha-icon icon="${t.icon}"></ha-icon>
+              <ha-icon icon="mdi:download"></ha-icon>
+              <span class="queue-badge">${queueCount}</span>
             </button>
-          `;
-        })}
-        ${queueCount > 0 ? html`
-          <button
-            class="nav-btn nav-btn-queue ${this._activeTab === "downloads" ? "active" : ""}"
-            title="Downloads (${queueCount})"
-            @click="${() => this._switchTab("downloads")}"
-          >
-            <ha-icon icon="mdi:download"></ha-icon>
-            <span class="queue-badge">${queueCount}</span>
-          </button>
-        ` : ""}
+          ` : ""}
+        </div>
+        <div class="search-wrap">
+          <input
+            class="search-input"
+            type="search"
+            placeholder="${placeholder}"
+            .value="${this._query}"
+            @input="${this._onSearchInput}"
+          />
+          ${this._loading && this._activeTab !== "downloads"
+            ? html`<ha-spinner size="small" class="search-spinner"></ha-spinner>`
+            : ""}
+        </div>
       </div>
     `;
   }
@@ -597,26 +611,6 @@ class RequestarrCard extends LitElement {
             <span class="activity-item-eta">${q.timeleft || "—"}</span>
           </div>
         `)}
-      </div>
-    `;
-  }
-
-  _renderSearch() {
-    return html`
-      <div class="search-wrap">
-        <input
-          class="search-input"
-          type="search"
-          placeholder="Search..."
-          .value="${this._query}"
-          @input="${this._onSearchInput}"
-        />
-        ${this._loading
-          ? html`<ha-spinner
-              size="small"
-              class="search-spinner"
-            ></ha-spinner>`
-          : ""}
       </div>
     `;
   }
@@ -850,9 +844,8 @@ class RequestarrCard extends LitElement {
         overflow: hidden;
       }
 
-      /* Nav bar — segmented control */
-      .nav-bar {
-        display: flex;
+      /* Card header — tabs + search in one unit */
+      .card-header {
         margin-bottom: 12px;
         border: 1px solid var(--divider-color);
         border-radius: 10px;
@@ -863,6 +856,9 @@ class RequestarrCard extends LitElement {
         font-size: 0.8rem;
         color: var(--secondary-text-color);
         padding: 8px 16px;
+      }
+      .nav-row {
+        display: flex;
       }
       .nav-btn {
         flex: 1;
@@ -903,24 +899,20 @@ class RequestarrCard extends LitElement {
         color: #9e9e9e;
       }
 
-      /* Search */
+      /* Search — inside card-header */
       .search-wrap {
         position: relative;
-        margin-bottom: 12px;
+        border-top: 1px solid var(--divider-color);
       }
       .search-input {
         width: 100%;
         box-sizing: border-box;
         padding: 8px 12px;
-        border: 1px solid var(--divider-color);
-        border-radius: 8px;
-        background: var(--secondary-background-color);
+        border: none;
+        background: transparent;
         color: var(--primary-text-color);
-        font-size: 1rem;
+        font-size: 0.9rem;
         outline: none;
-      }
-      .search-input:focus {
-        border-color: var(--primary-color);
       }
       .search-spinner {
         position: absolute;
