@@ -589,14 +589,12 @@ class RequestarrCard extends LitElement {
         ${items.map((q) => html`
           <div class="activity-item">
             <ha-icon icon="${svcIcon[q.service] || "mdi:download"}" class="activity-svc-icon"></ha-icon>
-            <div class="activity-item-info">
-              <span class="activity-item-title">${q.title}</span>
-              <div class="activity-progress-bar">
-                <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
-              </div>
+            <span class="activity-item-title">${q.title}</span>
+            <div class="activity-progress-bar">
+              <div class="activity-progress-fill" style="width: ${q.progress}%"></div>
             </div>
             <span class="activity-item-pct">${q.progress.toFixed(0)}%</span>
-            ${q.timeleft ? html`<span class="activity-item-eta">${q.timeleft}</span>` : ""}
+            <span class="activity-item-eta">${q.timeleft || "—"}</span>
           </div>
         `)}
       </div>
@@ -1324,23 +1322,19 @@ class RequestarrCard extends LitElement {
         scrollbar-color: var(--divider-color) transparent;
       }
       .activity-item {
-        display: flex;
+        display: grid;
+        grid-template-columns: 20px 1fr 80px 36px 64px;
         align-items: center;
         gap: 8px;
-        padding: 6px 12px;
-        border-top: 1px solid var(--divider-color);
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--divider-color);
+      }
+      .activity-item:last-child {
+        border-bottom: none;
       }
       .activity-svc-icon {
         --mdc-icon-size: 16px;
         color: var(--secondary-text-color);
-        flex-shrink: 0;
-      }
-      .activity-item-info {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
       }
       .activity-item-title {
         font-size: 0.8rem;
@@ -1350,29 +1344,27 @@ class RequestarrCard extends LitElement {
         text-overflow: ellipsis;
       }
       .activity-progress-bar {
-        height: 4px;
+        height: 6px;
         background: var(--divider-color);
-        border-radius: 2px;
+        border-radius: 3px;
         overflow: hidden;
       }
       .activity-progress-fill {
         height: 100%;
         background: var(--primary-color);
-        border-radius: 2px;
+        border-radius: 3px;
         transition: width 0.3s ease;
       }
       .activity-item-pct {
         font-size: 0.75rem;
         font-weight: 600;
         color: var(--primary-text-color);
-        flex-shrink: 0;
-        min-width: 32px;
         text-align: right;
       }
       .activity-item-eta {
         font-size: 0.7rem;
         color: var(--secondary-text-color);
-        flex-shrink: 0;
+        text-align: right;
       }
 
       /* Disabled "In Library" button state */
